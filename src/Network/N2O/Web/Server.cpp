@@ -99,7 +99,6 @@ static int callback_n2o(struct lws *wsi,
 
     switch (reason) {
         case LWS_CALLBACK_RECEIVE: {
-            auto recv = lean::mk_string((char *) in);
             auto headers = get_headers(userdata->headers_count, userdata->headers);
 
             obj* world = lean::io_mk_world();
@@ -111,7 +110,13 @@ static int callback_n2o(struct lws *wsi,
             auto write = lean::alloc_closure(lean_send_message, 1);
             closure_set(write, 0, (obj*) ref);
 
-            lean::apply_4(n2o_handler, write, recv, headers, lean::io_mk_world());
+            auto socket = lean::alloc_cnstr(0, 3, 0);
+            lean::cnstr_set(socket, 0, lean::mk_string((char *) in));
+            lean::cnstr_set(socket, 1, write);
+
+            lean::cnstr_set(socket, 2, headers);
+
+            lean::apply_2(n2o_handler, socket, lean::io_mk_world());
 
             free(ref);
             break;
@@ -149,6 +154,7 @@ static int callback_n2o(struct lws *wsi,
                     userdata->headers_length += len + 1;
                 }
             }
+
             userdata->headers = (char*) malloc(userdata->headers_length);
             memset(userdata->headers, 0, userdata->headers_length);
 

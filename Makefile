@@ -2,7 +2,7 @@ LEAN_DIR=/home/segfault/lean4
 LEAN_PATH=$(LEAN_DIR)/library:./src:./sample-lean
 
 CPP = src/Network/N2O/Web/Server.cpp
-LEAN = src/Network/N2O/Web/Http src/Data/BERT sample-lean/sample
+LEAN = src/Network/N2O/Internal src/Network/N2O/Web/Http src/Data/BERT sample-lean/sample
 
 LIBS = -lwebsockets
 BIN = sample
@@ -20,7 +20,7 @@ endef
 all: clean
 	$(foreach file,$(LEAN),$(call lean-olean,$(file)))
 	$(foreach file,$(LEAN),$(call lean-compile,$(file)))
-	$(LEAN_DIR)/bin/leanc $(CPP) $(foreach file,$(LEAN),$(file).cpp) $(LIBS) -o $(BIN)
+	$(LEAN_DIR)/bin/leanc $(CPP) $(foreach file,$(LEAN),$(file).cpp) $(LIBS) -o $(BIN) -g
 
 clean:
 	rm -f $(foreach file,$(LEAN),$(file).cpp) $(foreach file,$(LEAN),$(file).olean)
