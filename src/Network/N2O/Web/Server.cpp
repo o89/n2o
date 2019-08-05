@@ -14,6 +14,11 @@ struct n2o_userdata {
     std::queue<char*>* pool;
 };
 
+struct n2o_userdata_ref {
+    lws* wsi;
+    n2o_userdata* userdata;
+};
+
 static const struct lws_http_mount mounts = {
     /* .mount_next */            NULL,
     /* .mountpoint */            "/",
@@ -75,31 +80,47 @@ obj* get_headers(uint8_t count, char* headers) {
     return arr;
 }
 
+auto lean_send_message(obj* user, obj* msg, obj* r) {
+    auto ref = (n2o_userdata_ref*) user;
+
+    auto res = (char*) malloc(lean::string_len(msg) + 1);
+    strcpy(res, lean::string_cstr(msg));
+
+    ref->userdata->pool->push(res);
+    lws_callback_on_writable(ref->wsi);
+
+    return lean::set_io_result(r, lean::box(0));
+}
+
 static int callback_n2o(struct lws *wsi,
                         enum lws_callback_reasons reason,
                         void *user, void *in, size_t len) {
     auto userdata = (n2o_userdata*) user;
+
     switch (reason) {
         case LWS_CALLBACK_RECEIVE: {
             auto recv = lean::mk_string((char *) in);
             auto headers = get_headers(userdata->headers_count, userdata->headers);
 
-            auto res = lean::apply_2(n2o_handler, recv, headers);
-            if (lean::obj_tag(res) == 1) {
-                auto some = lean::cnstr_get(res, 0);
-                auto msg = (char*) malloc(string_len(some) + 1);
-                strcpy(msg, lean::string_cstr(some));
+            obj* world = lean::io_mk_world();
+            auto ref_user = lean::mk_nat_obj((uintptr_t) user);
 
-                userdata->pool->push(msg);
-                lws_callback_on_writable(wsi);
-            }
+            auto ref = (n2o_userdata_ref*) malloc(sizeof(n2o_userdata_ref));
+            *ref = { .wsi = wsi, .userdata = userdata };
 
+            auto write = lean::alloc_closure(lean_send_message, 1);
+            closure_set(write, 0, (obj*) ref);
+
+            lean::apply_4(n2o_handler, write, recv, headers, lean::io_mk_world());
+
+            free(ref);
             break;
         }
 
         case LWS_CALLBACK_SERVER_WRITEABLE: {
             if (!userdata->pool->empty()) {
                 auto str = userdata->pool->front();
+                printf("[debug] pool: %s\n", str);
                 auto length = strlen(str);
                 userdata->pool->pop();
 
@@ -108,7 +129,6 @@ static int callback_n2o(struct lws *wsi,
                 free(str);
 
                 lws_write(wsi, (unsigned char*) &buff[LWS_PRE], length, LWS_WRITE_TEXT);
-                lws_set_timeout(wsi, (pending_timeout) 1, LWS_TO_KILL_ASYNC);
                 free(buff);
             }
             break;
@@ -209,7 +229,6 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
         return lean::set_io_error(r, lean::mk_string("lws init failed"));
     }
 
-    lws_set_log_level(0b1111111111, NULL);
     printf("Started server at %s:%d\n", host, port);
 
     while (!interrupted) lws_service(context, 10);
