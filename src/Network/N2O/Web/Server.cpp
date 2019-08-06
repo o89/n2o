@@ -8,7 +8,6 @@
 typedef lean::object obj;
 
 struct n2o_userdata {
-    lws* wsi;
     char* headers;
     uint8_t headers_count;
     size_t headers_length;
@@ -76,18 +75,6 @@ obj* get_headers(uint8_t count, char* headers) {
     return arr;
 }
 
-auto lean_send_message(obj* user, obj* msg, obj* r) {
-    auto ref = (n2o_userdata*) user;
-
-    auto res = (char*) malloc(lean::string_len(msg) + 1);
-    strcpy(res, lean::string_cstr(msg));
-
-    ref->pool->push(res);
-    lws_callback_on_writable(ref->wsi);
-
-    return lean::set_io_result(r, lean::box(0));
-}
-
 static int callback_n2o(struct lws *wsi,
                         enum lws_callback_reasons reason,
                         void *user, void *in, size_t len) {
@@ -95,17 +82,20 @@ static int callback_n2o(struct lws *wsi,
 
     switch (reason) {
         case LWS_CALLBACK_RECEIVE: {
-            auto headers = get_headers(userdata->headers_count, userdata->headers);
-
-            auto write = lean::alloc_closure(lean_send_message, 1);
-            closure_set(write, 0, (obj*) user);
-
-            auto socket = lean::alloc_cnstr(0, 3, 0);
+            auto socket = lean::alloc_cnstr(0, 2, 0);
             lean::cnstr_set(socket, 0, lean::mk_string((char *) in));
-            lean::cnstr_set(socket, 1, write);
-            lean::cnstr_set(socket, 2, headers);
+            lean::cnstr_set(socket, 1, get_headers(userdata->headers_count, userdata->headers));
 
-            lean::apply_2(n2o_handler, socket, lean::io_mk_world());
+            auto res = lean::apply_1(n2o_handler, socket);
+            if (lean::obj_tag(res) == 1) {
+                auto res_some = lean::cnstr_get(res, 0);
+                // free calls write callback
+                auto msg = (char*) malloc(lean::string_len(res_some) + 1);
+                strcpy(msg, lean::string_cstr(res_some));
+
+                userdata->pool->push(msg);
+                lws_callback_on_writable(wsi);
+            }
 
             break;
         }
@@ -118,8 +108,7 @@ static int callback_n2o(struct lws *wsi,
                 userdata->pool->pop();
 
                 auto buff = (char*) malloc(length + LWS_PRE + 1);
-                strcpy(&buff[LWS_PRE], str);
-                free(str);
+                strcpy(&buff[LWS_PRE], str); free(str);
 
                 lws_write(wsi, (unsigned char*) &buff[LWS_PRE], length, LWS_WRITE_TEXT);
                 free(buff);
@@ -128,7 +117,6 @@ static int callback_n2o(struct lws *wsi,
         }
 
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION: {
-            userdata->wsi = wsi;
             userdata->pool = new std::queue<char*>;
             userdata->headers_length = 0;
             userdata->headers_count = 0;

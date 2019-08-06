@@ -24,7 +24,6 @@ inductive Event (α : Type)
 
 structure WS :=
 (question : String)
-(answer : String → IO Unit)
 (headers : Array Header)
 
 end Network.N2O.Internal

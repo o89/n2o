@@ -27,15 +27,12 @@ function N2O_start() {
 
 var $io = {}; $io.on = function onio(r, cb) {
     if (is(r, 3, 'io')) {
-        if (r.v[2].v != undefined && r.v[2].v[1] != undefined &&
-            r.v[2].v) {
-            localStorage.setItem("token",utf8_arr(r.v[2].v));
-        }
-        try { eval(utf8_arr(r.v[1].v));
-              if (typeof cb == 'function') cb(r);
-              return { status: "ok" };
-        } catch (e)  { console.log("Eval error: "+r);
-                       return { status: '' }; }
+        if (r.v[2].v != undefined && r.v[2].v[1] != undefined && r.v[2].v.length == 2 &&
+           (r.v[2].v[0].v == "Token" || r.v[2].v[0].v == "Auth"))
+         { localStorage.setItem("token",utf8_arr(r.v[2].v[1].v)); }
+        if (typeof cb == 'function') cb(r.v[2]);
+        try { eval(utf8_arr(r.v[1].v)); return { status: "ok" }; }
+        catch (e) { console.error("Eval failed:",e); return { status: '' }; }
     } else return { status: '' };
 }
 
@@ -56,7 +53,7 @@ var $bert = {}; $bert.protos = [$io, $file]; $bert.on = function onbert(evt, cb)
             for (var i = 0; i < $bert.protos.length; i++) {
                 var p = $bert.protos[i];
                 var ret = p.on(erlang, p.do);
-                if (ret.status == "ok") return ret;
+                if (ret != undefined && ret.status == "ok") return ret;
             }
         } catch (e) { console.error(e); }
         return { status: "ok" };
