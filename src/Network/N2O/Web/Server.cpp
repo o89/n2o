@@ -8,15 +8,11 @@
 typedef lean::object obj;
 
 struct n2o_userdata {
+    lws* wsi;
     char* headers;
     uint8_t headers_count;
     size_t headers_length;
     std::queue<char*>* pool;
-};
-
-struct n2o_userdata_ref {
-    lws* wsi;
-    n2o_userdata* userdata;
 };
 
 static const struct lws_http_mount mounts = {
@@ -81,12 +77,12 @@ obj* get_headers(uint8_t count, char* headers) {
 }
 
 auto lean_send_message(obj* user, obj* msg, obj* r) {
-    auto ref = (n2o_userdata_ref*) user;
+    auto ref = (n2o_userdata*) user;
 
     auto res = (char*) malloc(lean::string_len(msg) + 1);
     strcpy(res, lean::string_cstr(msg));
 
-    ref->userdata->pool->push(res);
+    ref->pool->push(res);
     lws_callback_on_writable(ref->wsi);
 
     return lean::set_io_result(r, lean::box(0));
@@ -101,24 +97,16 @@ static int callback_n2o(struct lws *wsi,
         case LWS_CALLBACK_RECEIVE: {
             auto headers = get_headers(userdata->headers_count, userdata->headers);
 
-            obj* world = lean::io_mk_world();
-            auto ref_user = lean::mk_nat_obj((uintptr_t) user);
-
-            auto ref = (n2o_userdata_ref*) malloc(sizeof(n2o_userdata_ref));
-            *ref = { .wsi = wsi, .userdata = userdata };
-
             auto write = lean::alloc_closure(lean_send_message, 1);
-            closure_set(write, 0, (obj*) ref);
+            closure_set(write, 0, (obj*) user);
 
             auto socket = lean::alloc_cnstr(0, 3, 0);
             lean::cnstr_set(socket, 0, lean::mk_string((char *) in));
             lean::cnstr_set(socket, 1, write);
-
             lean::cnstr_set(socket, 2, headers);
 
             lean::apply_2(n2o_handler, socket, lean::io_mk_world());
 
-            free(ref);
             break;
         }
 
@@ -140,6 +128,7 @@ static int callback_n2o(struct lws *wsi,
         }
 
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION: {
+            userdata->wsi = wsi;
             userdata->pool = new std::queue<char*>;
             userdata->headers_length = 0;
             userdata->headers_count = 0;
