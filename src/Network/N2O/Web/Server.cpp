@@ -7,11 +7,17 @@
 
 typedef lean::object obj;
 
+enum MsgKind { Text, Binary };
+struct Msg {
+    enum MsgKind kind;
+    char* msg;
+};
+
 struct n2o_userdata {
     char* headers;
     uint8_t headers_count;
     size_t headers_length;
-    std::queue<char*>* pool;
+    std::queue<Msg>* pool;
 };
 
 static const struct lws_http_mount mounts = {
@@ -35,6 +41,7 @@ static const struct lws_http_mount mounts = {
 };
 
 obj* n2o_handler;
+static int interrupted;
 
 obj* prod(obj* fst, obj* snd) {
     obj* tuple = lean::alloc_cnstr(0, 2, 0);
@@ -102,14 +109,32 @@ static int callback_n2o(struct lws *wsi,
             lean::cnstr_set(socket, 1, get_headers(userdata->headers_count, userdata->headers));
 
             auto res = lean::apply_1(n2o_handler, socket);
-            if (lean::obj_tag(res) == 1) {
-                auto res_some = lean::cnstr_get(res, 0);
-                // free(msg); calls write callback
-                auto msg = (char*) malloc(lean::string_len(res_some) + 1);
-                strcpy(msg, lean::string_cstr(res_some));
+            if (lean::obj_tag(res) == 0) {
+                printf("%s\n", lean::string_cstr(lean::cnstr_get(res, 0)));
+                interrupted = 1;
+            } else if (lean::obj_tag(res) == 1) {
+                auto reply = lean::cnstr_get(res, 0);
 
-                userdata->pool->push(msg);
-                lws_callback_on_writable(wsi);
+                if (lean::obj_tag(reply) == 0) {
+                    // free(msg); calls write callback
+                    auto text = lean::cnstr_get(reply, 0);
+                    auto msg = (char*) malloc(lean::string_len(text) + 1);
+                    strcpy(msg, lean::string_cstr(text));
+
+                    userdata->pool->push({ Text, msg });
+                    lws_callback_on_writable(wsi);
+                } else {
+                    auto arr = lean::cnstr_get(reply, 0);
+                    auto size = lean::array_size(arr);
+
+                    auto msg = (char*) malloc(size + 1);
+                    for (size_t i = 0; i < size; i++)
+                        msg[i] = lean::unbox(lean::array_get(arr, i));
+                    msg[size] = '\0';
+
+                    userdata->pool->push({ Binary, msg });
+                    lws_callback_on_writable(wsi);
+                }
             }
 
             break;
@@ -118,21 +143,25 @@ static int callback_n2o(struct lws *wsi,
         case LWS_CALLBACK_SERVER_WRITEABLE: {
             if (!userdata->pool->empty()) {
                 auto str = userdata->pool->front();
-                printf("[debug] pool: %s\n", str);
-                auto length = strlen(str);
+                printf("[debug] pool: %s\n", str.msg);
+
+                auto length = strlen(str.msg);
+                if (str.kind == Text) length++; // leading zero
+
                 userdata->pool->pop();
 
-                auto buff = (char*) malloc(length + LWS_PRE + 1);
-                strcpy(&buff[LWS_PRE], str); free(str);
+                auto buff = (char*) malloc(LWS_PRE + length);
+                memcpy(&buff[LWS_PRE], str.msg, length); free(str.msg);
 
-                lws_write(wsi, (unsigned char*) &buff[LWS_PRE], length, LWS_WRITE_TEXT);
+                lws_write(wsi, (unsigned char*) &buff[LWS_PRE], length,
+                          (str.kind == Text) ? LWS_WRITE_TEXT : LWS_WRITE_BINARY);
                 free(buff);
             }
             break;
         }
 
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION: {
-            userdata->pool = new std::queue<char*>;
+            userdata->pool = new std::queue<Msg>;
             userdata->headers_length = 0;
             userdata->headers_count = 0;
 
@@ -177,7 +206,7 @@ static int callback_n2o(struct lws *wsi,
             free(userdata->headers);
 
             while (!userdata->pool->empty()) {
-                free(userdata->pool->front());
+                free(userdata->pool->front().msg);
                 userdata->pool->pop();
             }
             delete userdata->pool;
@@ -199,8 +228,6 @@ extern "C" obj* lean_set_handler(obj* f, obj* r) {
     n2o_handler = f;
     return lean::set_io_result(r, lean::box(0));
 }
-
-static int interrupted;
 
 extern "C" obj* lean_stop_server(obj* r) {
     interrupted = 1;

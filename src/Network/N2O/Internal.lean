@@ -10,12 +10,12 @@ instance Header.HasToString : HasToString Header :=
 
 inductive Msg
 | text : String → Msg
-| bin : Array UInt8 → Msg
+| binary : Array UInt8 → Msg
 
 instance : HasToString Msg :=
 ⟨λ m ⇒ match m with
   | Msg.text str ⇒ str
-  | Msg.bin lst ⇒ toString lst ⟩
+  | Msg.binary lst ⇒ toString lst⟩
 
 structure Req :=
 (path : String)
@@ -23,10 +23,10 @@ structure Req :=
 (version : String)
 (headers : List Header)
 
-inductive Result (α : Type)
-| reply {} : α → Result
+inductive Result
+| error {} : String → Result
+| reply {} : Msg → Result
 | ok {} : Result
-| unknown {} : Result
 
 inductive Event (α : Type)
 | init {} : Event
