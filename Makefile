@@ -20,7 +20,7 @@ endef
 all: clean
 	$(foreach file,$(LEAN),$(call lean-olean,$(file)))
 	$(foreach file,$(LEAN),$(call lean-compile,$(file)))
-	$(LEAN_DIR)/bin/leanc $(CPP) $(foreach file,$(LEAN),$(file).cpp) $(LIBS) -o $(BIN) -g
+	$(LEAN_DIR)/bin/leanc $(CPP) $(foreach file,$(LEAN),$(file).cpp) $(LIBS) -o $(BIN) -g -Wall
 
 clean:
 	rm -f $(foreach file,$(LEAN),$(file).cpp) $(foreach file,$(LEAN),$(file).olean)

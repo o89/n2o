@@ -78,18 +78,33 @@ obj* get_headers(uint8_t count, char* headers) {
 static int callback_n2o(struct lws *wsi,
                         enum lws_callback_reasons reason,
                         void *user, void *in, size_t len) {
+    auto question = (char*) in;
     auto userdata = (n2o_userdata*) user;
 
     switch (reason) {
         case LWS_CALLBACK_RECEIVE: {
             auto socket = lean::alloc_cnstr(0, 2, 0);
-            lean::cnstr_set(socket, 0, lean::mk_string((char *) in));
+
+            obj* msg;
+            if (lws_frame_is_binary(wsi)) {
+                msg = lean::alloc_cnstr(1, 1, 0);
+
+                auto buff = lean::mk_array(lean::mk_nat_obj(len), lean::box(0));
+                for (size_t i = 0; i < len; i++)
+                    buff = lean::array_set(buff, lean::mk_nat_obj(i), lean::box(question[i]));
+                lean::cnstr_set(msg, 0, buff);
+            } else {
+                msg = lean::alloc_cnstr(0, 1, 0);
+                lean::cnstr_set(msg, 0, lean::mk_string(question));
+            }
+
+            lean::cnstr_set(socket, 0, msg);
             lean::cnstr_set(socket, 1, get_headers(userdata->headers_count, userdata->headers));
 
             auto res = lean::apply_1(n2o_handler, socket);
             if (lean::obj_tag(res) == 1) {
                 auto res_some = lean::cnstr_get(res, 0);
-                // free calls write callback
+                // free(msg); calls write callback
                 auto msg = (char*) malloc(lean::string_len(res_some) + 1);
                 strcpy(msg, lean::string_cstr(res_some));
 
@@ -168,6 +183,8 @@ static int callback_n2o(struct lws *wsi,
             delete userdata->pool;
             break;
         }
+
+        default: break;
     }
     return 0;
 }

@@ -8,6 +8,15 @@ def Header := String × String
 instance Header.HasToString : HasToString Header :=
 ⟨fun pair ⇒ pair.fst ++ ": " ++ pair.snd⟩
 
+inductive Msg
+| text : String → Msg
+| bin : Array UInt8 → Msg
+
+instance : HasToString Msg :=
+⟨λ m ⇒ match m with
+  | Msg.text str ⇒ str
+  | Msg.bin lst ⇒ toString lst ⟩
+
 structure Req :=
 (path : String)
 (method : String)
@@ -25,7 +34,7 @@ inductive Event (α : Type)
 | terminate {} : Event
 
 structure WS :=
-(question : String)
+(question : Msg)
 (headers : Array (String × String))
 
 def Header.dropBack : Header → Option Header
