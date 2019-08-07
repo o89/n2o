@@ -28,6 +28,8 @@ inductive Result
 | reply {} : Msg → Result
 | ok {} : Result
 
+def Handler := Req × Msg → Result
+
 inductive Event (α : Type)
 | init {} : Event
 | message {} : α → Event
