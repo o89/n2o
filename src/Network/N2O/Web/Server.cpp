@@ -102,7 +102,10 @@ static int callback_n2o(struct lws *wsi,
                 lean::cnstr_set(msg, 0, buff);
             } else {
                 msg = lean::alloc_cnstr(0, 1, 0);
-                lean::cnstr_set(msg, 0, lean::mk_string(question));
+                auto str = (char*) malloc(len + 1);
+                memcpy(str, in, len); str[len] = '\0';
+
+                lean::cnstr_set(msg, 0, lean::mk_string(str)); free(str);
             }
 
             lean::cnstr_set(socket, 0, msg);
@@ -143,7 +146,6 @@ static int callback_n2o(struct lws *wsi,
         case LWS_CALLBACK_SERVER_WRITEABLE: {
             if (!userdata->pool->empty()) {
                 auto str = userdata->pool->front();
-                printf("[debug] pool: %s\n", str.msg);
 
                 auto length = strlen(str.msg);
                 if (str.kind == Text) length++; // leading zero
