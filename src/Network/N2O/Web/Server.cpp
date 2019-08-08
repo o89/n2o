@@ -41,6 +41,7 @@ static const struct lws_http_mount mounts = {
 };
 
 obj* n2o_handler;
+
 static int interrupted;
 
 obj* prod(obj* fst, obj* snd) {
@@ -109,7 +110,9 @@ static int callback_n2o(struct lws *wsi,
             }
 
             lean::cnstr_set(socket, 0, msg);
-            lean::cnstr_set(socket, 1, get_headers(userdata->headers_count, userdata->headers));
+            auto headers = get_headers(userdata->headers_count, userdata->headers);
+
+            lean::cnstr_set(socket, 1, headers);
 
             auto res = lean::apply_1(n2o_handler, socket);
             if (lean::obj_tag(res) == 0) {
@@ -228,6 +231,7 @@ static struct lws_protocols protocols[] = {
 
 extern "C" obj* lean_set_handler(obj* f, obj* r) {
     n2o_handler = f;
+    lean::mark_persistent(f);
     return lean::set_io_result(r, lean::box(0));
 }
 
