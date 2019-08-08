@@ -14,9 +14,7 @@ struct Msg {
 };
 
 struct n2o_userdata {
-    char* headers;
-    uint8_t headers_count;
-    size_t headers_length;
+    obj* headers;
     std::queue<Msg>* pool;
 };
 
@@ -61,28 +59,6 @@ char* get_string(char* ptr) {
     return res;
 }
 
-obj* get_headers(uint8_t count, char* headers) {
-    char* ptr = headers;
-
-    obj* zero = prod(lean::mk_string(""), lean::mk_string(""));
-    obj* arr = lean::mk_array(lean::mk_nat_obj(count), zero);
-
-    for (int i = 0; i < count; i++) {
-        auto name = get_string(ptr); ptr += strlen(name) + 1;
-        auto value = get_string(ptr); ptr += strlen(value) + 1;
-
-        arr = lean::array_set(
-            arr, lean::mk_nat_obj(i),
-            prod(lean::mk_string(name), lean::mk_string(value))
-        );
-
-        free(name); free(value);
-    }
-    ptr = nullptr;
-
-    return arr;
-}
-
 static int callback_n2o(struct lws *wsi,
                         enum lws_callback_reasons reason,
                         void *user, void *in, size_t len) {
@@ -110,9 +86,7 @@ static int callback_n2o(struct lws *wsi,
             }
 
             lean::cnstr_set(socket, 0, msg);
-            auto headers = get_headers(userdata->headers_count, userdata->headers);
-
-            lean::cnstr_set(socket, 1, headers);
+            lean::cnstr_set(socket, 1, userdata->headers);
 
             auto res = lean::apply_1(n2o_handler, socket);
             if (lean::obj_tag(res) == 0) {
@@ -167,49 +141,41 @@ static int callback_n2o(struct lws *wsi,
 
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION: {
             userdata->pool = new std::queue<Msg>;
-            userdata->headers_length = 0;
-            userdata->headers_count = 0;
 
+            int count = 0;
             for (int i = 0; i < WSI_TOKEN_COUNT; i++) {
                 auto token = (enum lws_token_indexes) i;
-                int len = lws_hdr_total_length(wsi, token);
-                if (len > 0) {
-                    auto name = (const char*) lws_token_to_string(token);
-
-                    userdata->headers_length += strlen(name) + 1;
-                    userdata->headers_length += len + 1;
-                }
+                if (lws_hdr_total_length(wsi, token) > 0) count++;
             }
 
-            userdata->headers = (char*) malloc(userdata->headers_length);
-            memset(userdata->headers, 0, userdata->headers_length);
+            auto zero = prod(lean::mk_string(""), lean::mk_string(""));
+            userdata->headers = lean::mk_array(lean::mk_nat_obj(count), zero);
+            count = 0;
 
-            auto ptr = userdata->headers;
             for (int i = 0; i < WSI_TOKEN_COUNT; i++) {
                 auto token = (enum lws_token_indexes) i;
                 int len = lws_hdr_total_length(wsi, token);
 
                 if (len > 0) {
                     auto name = (const char*) lws_token_to_string(token);
-                    size_t name_length = strlen(name);
 
-                    memcpy(ptr, name, name_length);
-                    ptr += name_length + 1; *ptr = '\0';
+                    auto value = (char*) malloc(len + 1);
+                    lws_hdr_copy(wsi, value, len + 1, token);
+                    value[len] = '\0';
 
-                    lws_hdr_copy(wsi, ptr, len + 1, token);
-                    ptr += len + 1;
-
-                    userdata->headers_count++;
+                    userdata->headers = lean::array_set(
+                        userdata->headers, lean::mk_nat_obj(count),
+                        prod(lean::mk_string(name), lean::mk_string(value))
+                    ); free(value);
+                    lean::mark_persistent(userdata->headers);
+                    count++;
                 }
             }
-            ptr = nullptr;
 
             break;
         }
 
         case LWS_CALLBACK_CLOSED: {
-            free(userdata->headers);
-
             while (!userdata->pool->empty()) {
                 free(userdata->pool->front().msg);
                 userdata->pool->pop();
