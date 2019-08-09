@@ -2,7 +2,7 @@ import init.system.io
 
 def String.init (s : String) := s.extract 0 (s.length - 1)
 
-namespace Network.N2O.Internal
+namespace network.n2o.internal
 
 def Header := String × String
 instance Header.HasToString : HasToString Header :=
@@ -65,4 +65,4 @@ let headers := List.filterMap Header.dropBack headersList;
                  (String.isPrefixOf "http" ∘ Prod.fst)) "",
   headers := headers }
 
-end Network.N2O.Internal
+end network.n2o.internal

@@ -57,7 +57,7 @@ instance Integer.HasToString : HasToString Integer :=
   | Integer.zero ⇒ "0"
   | Integer.neg x ⇒ "-" ++ toString (x + 1) ⟩
 
-namespace Data.BERT
+namespace data.bert
 
 inductive Term
 | int : Int → Term
@@ -196,4 +196,4 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
 
 -- TODO: BERT of Map
 
-end Data.BERT
+end data.bert

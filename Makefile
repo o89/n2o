@@ -1,8 +1,8 @@
 LEAN_DIR=/home/segfault/lean4
 LEAN_PATH=$(LEAN_DIR)/library:./src:./sample-lean
 
-CPP = src/Network/N2O/Web/Server.cpp
-LEAN = src/Network/N2O/Internal src/Network/N2O/Web/Http src/Data/BERT sample-lean/sample
+CPP = src/network/n2o/web/server.cpp
+LEAN = src/network/n2o/internal src/network/n2o/web/http src/data/bert sample-lean/sample
 
 LIBS = -lwebsockets
 BIN = sample
