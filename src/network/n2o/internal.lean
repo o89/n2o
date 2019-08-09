@@ -30,10 +30,22 @@ inductive Result
 
 def Handler := Req → Msg → Result
 
-inductive Event (α : Type)
-| init {} : Event
-| message {} : α → Event
-| terminate {} : Event
+structure Proto :=
+(prot : Type) -- Input type for protocol handler
+(ev : Type) -- Output type for protocol handler and input type for event handler
+(res req : Type)
+(nothing : res)
+(proto : prot → ev)
+
+structure Cx (m : Proto) :=
+(req : m.req) (module : m.ev → m.res)
+
+def Context.run (m : Proto) (cx : Cx m)
+  (handlers : List (Cx m → Cx m)) (msg : m.prot) :=
+(handlers.foldl (λ x (f : Cx m → Cx m) ⇒ f x) cx).module (m.proto msg)
+
+def mkHandler (m : Proto) (handlers : List (Cx m → Cx m)) : m.req → m.prot → m.res :=
+λ req msg ⇒ Context.run m ⟨req, λ _ ⇒ m.nothing⟩ handlers msg
 
 structure WS :=
 (question : Msg)
