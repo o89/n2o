@@ -1,4 +1,4 @@
-LEAN_DIR=/home/segfault/lean4
+#LEAN_DIR= # May be set here
 LEAN_PATH=$(LEAN_DIR)/library:./src:./sample-lean
 
 CPP = src/network/n2o/web/callback.cpp src/network/n2o/web/server.cpp
