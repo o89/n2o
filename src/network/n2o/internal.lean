@@ -25,6 +25,7 @@ structure Req :=
 
 inductive Result
 | error {} : String → Result
+| warning {} : String → Result
 | reply {} : Msg → Result
 | ok {} : Result
 

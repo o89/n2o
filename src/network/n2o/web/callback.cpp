@@ -82,10 +82,12 @@ obj* read_msg(struct lws* wsi, n2o_userdata* user, char* in, size_t len) {
 }
 
 void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
-    if (lean::obj_tag(res) == 0) {
+    if (lean::obj_tag(res) == 0) { // error
         printf("%s\n", lean::string_cstr(lean::cnstr_get(res, 0)));
         interrupted = 1;
-    } else if (lean::obj_tag(res) == 1) {
+    } else if (lean::obj_tag(res) == 1) { // warning
+        printf("%s\n", lean::string_cstr(lean::cnstr_get(res, 0)));
+    } else if (lean::obj_tag(res) == 2) { // reply
         auto reply = lean::cnstr_get(res, 0);
 
         if (lean::obj_tag(reply) == 0) {
