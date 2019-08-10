@@ -79,32 +79,32 @@ def ct (b : String) (rest : List Term) : Term :=
 Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
 
 def compose : Term → Option Term
-| Term.nil := Term.list []
-| (Term.bool true) := ct "true" []
-| (Term.bool false) := ct "false" []
-| (Term.dictionary kvs) :=
+| Term.nil ⇒ Term.list []
+| Term.bool true ⇒ ct "true" []
+| Term.bool false ⇒ ct "false" []
+| Term.dictionary kvs ⇒
   ct "dict" [ Term.list $ (λ t ⇒ Term.tuple [Prod.fst t, Prod.snd t]) <$> kvs ]
-| (Term.regex s os) :=
+| Term.regex s os ⇒
   ct "regex" [ Term.bytelist s,
                Term.tuple [ Term.list (Term.atom <$> os) ] ]
-| _ := none
+| _ ⇒ none
 
 partial def Term.toString : Term → String
-| (Term.int x) := toString x
-| (Term.atom $ String.mk []) := ""
-| (Term.atom s@(String.mk $ x :: xs)) :=
+| Term.int x ⇒ toString x
+| Term.atom (String.mk []) ⇒ ""
+| Term.atom s@(String.mk $ x :: xs) ⇒
   if x.isLower then s
   else "'" ++ s ++ "'"
-| (Term.tuple ts) := "{" ++ String.intercalate ", " (Term.toString <$> ts) ++ "}"
-| (Term.bytelist s) := "[" ++ toString s ++ "]"
-| (Term.list ts) := "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
-| (Term.binary s) :=
+| Term.tuple ts ⇒ "{" ++ String.intercalate ", " (Term.toString <$> ts) ++ "}"
+| Term.bytelist s ⇒ "[" ++ toString s ++ "]"
+| Term.list ts ⇒ "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
+| Term.binary s ⇒
   let wrap := λ s ⇒ "<<" ++ s ++ ">>";
   if s.all Char.isAscii then wrap ("\"" ++ s ++ "\"")
   else wrap (toString s)
-| (Term.bigint x) := toString x
-| (Term.bigbigint x) := toString x
-| t := Option.getOrElse (Term.toString <$> compose t) ""
+| Term.bigint x ⇒ toString x
+| Term.bigbigint x ⇒ toString x
+| t ⇒ Option.getOrElse (Term.toString <$> compose t) ""
 instance : HasToString Term := ⟨Term.toString⟩
 
 class BERT (α : Type) :=
@@ -149,32 +149,32 @@ instance ByteString.BERT : BERT ByteString :=
     | _ ⇒ Sum.inl "invalid bytestring type" }
 
 def Sum.HasMap {γ α β : Type} : (α → β) → Sum γ α → Sum γ β
-| f (Sum.inr val) := Sum.inr (f val)
-| _ (Sum.inl er)  := Sum.inl er
+| f, Sum.inr val ⇒ Sum.inr (f val)
+| _, Sum.inl er  ⇒ Sum.inl er
 
 instance {α : Type} : Functor (Sum α) :=
 { map := @Sum.HasMap α }
 
 def Sum.HasSeq {γ α β : Type} : Sum γ (α → β) → Sum γ α → Sum γ β
-| (Sum.inr f) (Sum.inr x) := Sum.inr (f x)
-| (Sum.inl er) _ := Sum.inl er
-| _ (Sum.inl er) := Sum.inl er
+| Sum.inr f, Sum.inr x ⇒ Sum.inr (f x)
+| Sum.inl er, _ ⇒ Sum.inl er
+| _, Sum.inl er ⇒ Sum.inl er
 
 instance {α : Type} : Applicative (Sum α) :=
 { pure := λ _ x ⇒ Sum.inr x,
   seq := @Sum.HasSeq α }
 
 def Sum.HasBind {α β γ : Type} : Sum α β → (β → Sum α γ) → Sum α γ
-| (Sum.inr val) f := f val
-| (Sum.inl er)  _ := Sum.inl er
+| Sum.inr val, f ⇒ f val
+| Sum.inl er,  _ ⇒ Sum.inl er
 
 instance {α : Type} : Monad (Sum α) :=
 { pure := λ _ x ⇒ Sum.inr x,
   bind := @Sum.HasBind α }
 
 def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List α → m (List β)
-| [] := pure []
-| (x :: xs) := do
+| [] ⇒ pure []
+| x :: xs ⇒ do
   ys ← mapM xs;
   y ← f x;
   pure (y :: ys)

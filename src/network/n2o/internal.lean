@@ -52,15 +52,15 @@ structure WS :=
 (headers : Array (String × String))
 
 def Header.dropBack : Header → Option Header
-| (name, value) :=
+| (name, value) ⇒
   if name.back = ':' then some (name.init, value)
   else none
 
 def Header.isHeader : String → Bool
-| "get " := true
-| "post " := true
-| "option " := true
-| _ := false
+| "get "    ⇒ true
+| "post "   ⇒ true
+| "option " ⇒ true
+| _         ⇒ false
 
 def WS.toReq (socket : WS) : Req :=
 let headersList := socket.headers.toList;
