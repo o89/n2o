@@ -57,6 +57,39 @@ instance Integer.HasToString : HasToString Integer :=
   | Integer.zero ⇒ "0"
   | Integer.neg x ⇒ "-" ++ toString (x + 1) ⟩
 
+def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List α → m (List β)
+| [] ⇒ pure []
+| x :: xs ⇒ do
+  ys ← mapM xs;
+  y ← f x;
+  pure (y :: ys)
+
+namespace Sum
+  def HasMap {γ α β : Type} : (α → β) → Sum γ α → Sum γ β
+  | f, Sum.inr val ⇒ Sum.inr (f val)
+  | _, Sum.inl er  ⇒ Sum.inl er
+
+  instance {α : Type} : Functor (Sum α) :=
+  { map := @HasMap α }
+
+  def HasSeq {γ α β : Type} : Sum γ (α → β) → Sum γ α → Sum γ β
+  | Sum.inr f, Sum.inr x ⇒ Sum.inr (f x)
+  | Sum.inl er, _ ⇒ Sum.inl er
+  | _, Sum.inl er ⇒ Sum.inl er
+
+  instance {α : Type} : Applicative (Sum α) :=
+  { pure := λ _ x ⇒ Sum.inr x,
+    seq := @HasSeq α }
+
+  def HasBind {α β γ : Type} : Sum α β → (β → Sum α γ) → Sum α γ
+  | Sum.inr val, f ⇒ f val
+  | Sum.inl er,  _ ⇒ Sum.inl er
+
+  instance {α : Type} : Monad (Sum α) :=
+  { pure := λ _ x ⇒ Sum.inr x,
+    bind := @HasBind α }
+end Sum
+
 namespace data.bert
 
 inductive Term
@@ -69,25 +102,26 @@ inductive Term
 | binary : ByteString → Term
 | bigint : Integer → Term
 | bigbigint : Integer → Term
-| nil : Term
-| bool : Bool → Term
-| dictionary : List (Term × Term) → Term
--- | time : UTCTime → Term
-| regex : String → List String → Term
+
+inductive CompTerm
+| nil : CompTerm
+| bool : Bool → CompTerm
+| dictionary : List (Term × Term) → CompTerm
+-- | time : UTCTime → CompTerm
+| regex : String → List String → CompTerm
 
 def ct (b : String) (rest : List Term) : Term :=
 Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
 
-def compose : Term → Option Term
-| Term.nil ⇒ Term.list []
-| Term.bool true ⇒ ct "true" []
-| Term.bool false ⇒ ct "false" []
-| Term.dictionary kvs ⇒
+@[matchPattern] def compose : CompTerm → Term
+| CompTerm.nil ⇒ Term.list []
+| CompTerm.bool true ⇒ ct "true" []
+| CompTerm.bool false ⇒ ct "false" []
+| CompTerm.dictionary kvs ⇒
   ct "dict" [ Term.list $ (λ t ⇒ Term.tuple [Prod.fst t, Prod.snd t]) <$> kvs ]
-| Term.regex s os ⇒
+| CompTerm.regex s os ⇒
   ct "regex" [ Term.bytelist s,
                Term.tuple [ Term.list (Term.atom <$> os) ] ]
-| _ ⇒ none
 
 partial def Term.toString : Term → String
 | Term.int x ⇒ toString x
@@ -104,7 +138,6 @@ partial def Term.toString : Term → String
   else wrap (toString s)
 | Term.bigint x ⇒ toString x
 | Term.bigbigint x ⇒ toString x
-| t ⇒ Option.getOrElse (Term.toString <$> compose t) ""
 instance : HasToString Term := ⟨Term.toString⟩
 
 class BERT (α : Type) :=
@@ -121,9 +154,10 @@ instance Int.BERT : BERT Int :=
     | _ ⇒ Sum.inl "invalid integer type" }
 
 instance Bool.BERT : BERT Bool :=
-{ toTerm := Term.bool,
+{ toTerm := compose ∘ CompTerm.bool,
   fromTerm := λ t ⇒ match t with
-    | Term.bool x ⇒ Sum.inr x
+    | compose (CompTerm.bool true) ⇒ Sum.inr true
+    | compose (CompTerm.bool false) ⇒ Sum.inr false
     | _ ⇒ Sum.inl "invalid bool type" }
 
 instance Integer.BERT : BERT Integer :=
@@ -147,37 +181,6 @@ instance ByteString.BERT : BERT ByteString :=
   fromTerm := λ t ⇒ match t with
     | Term.bytelist x ⇒ Sum.inr x
     | _ ⇒ Sum.inl "invalid bytestring type" }
-
-def Sum.HasMap {γ α β : Type} : (α → β) → Sum γ α → Sum γ β
-| f, Sum.inr val ⇒ Sum.inr (f val)
-| _, Sum.inl er  ⇒ Sum.inl er
-
-instance {α : Type} : Functor (Sum α) :=
-{ map := @Sum.HasMap α }
-
-def Sum.HasSeq {γ α β : Type} : Sum γ (α → β) → Sum γ α → Sum γ β
-| Sum.inr f, Sum.inr x ⇒ Sum.inr (f x)
-| Sum.inl er, _ ⇒ Sum.inl er
-| _, Sum.inl er ⇒ Sum.inl er
-
-instance {α : Type} : Applicative (Sum α) :=
-{ pure := λ _ x ⇒ Sum.inr x,
-  seq := @Sum.HasSeq α }
-
-def Sum.HasBind {α β γ : Type} : Sum α β → (β → Sum α γ) → Sum α γ
-| Sum.inr val, f ⇒ f val
-| Sum.inl er,  _ ⇒ Sum.inl er
-
-instance {α : Type} : Monad (Sum α) :=
-{ pure := λ _ x ⇒ Sum.inr x,
-  bind := @Sum.HasBind α }
-
-def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List α → m (List β)
-| [] ⇒ pure []
-| x :: xs ⇒ do
-  ys ← mapM xs;
-  y ← f x;
-  pure (y :: ys)
 
 instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
 { toTerm := λ xs ⇒ Term.list (BERT.toTerm <$> xs),
