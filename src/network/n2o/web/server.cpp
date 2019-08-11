@@ -93,8 +93,6 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
     info.mounts = &mounts;
     info.protocols = protocols;
     info.ws_ping_pong_interval = 0;
-    info.options =
-        LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
 
     context = lws_create_context(&info);
     if (!context) {
@@ -103,7 +101,7 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
 
     printf("Started server at %s:%d\n", host, port);
 
-    while (!interrupted) lws_service(context, 10);
+    while (!interrupted) lws_service(context, 1000);
 
     lws_context_destroy(context);
 
