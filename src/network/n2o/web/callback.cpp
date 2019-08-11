@@ -1,4 +1,4 @@
-#include "server.h"
+#include "server.hpp"
 
 obj* n2o_handler;
 int interrupted;

@@ -1,5 +1,5 @@
-#include "server.h"
-#include "callback.h"
+#include "server.hpp"
+#include "callback.hpp"
 
 static const struct lws_http_mount mounts = {
     /* .mount_next */            NULL,
