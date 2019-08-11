@@ -92,7 +92,7 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
     info.vhost_name = host;
     info.mounts = &mounts;
     info.protocols = protocols;
-    info.ws_ping_pong_interval = 1;
+    info.ws_ping_pong_interval = 0;
     info.options =
         LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
 
