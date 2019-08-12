@@ -46,17 +46,6 @@ def ByteString := String
 instance ByteString.HasToString : HasToString ByteString :=
 ⟨λ s ⇒ String.intercalate ", " $ (toString ∘ Char.toNat) <$> s.toList⟩
 
-inductive Integer
-| pos : Nat → Integer
-| zero
-| neg : Nat → Integer
-
-instance Integer.HasToString : HasToString Integer :=
-⟨λ x ⇒ match x with
-  | Integer.pos x ⇒ toString (x + 1)
-  | Integer.zero ⇒ "0"
-  | Integer.neg x ⇒ "-" ++ toString (x + 1) ⟩
-
 def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List α → m (List β)
 | [] ⇒ pure []
 | x :: xs ⇒ do
@@ -90,18 +79,40 @@ namespace Sum
     bind := @HasBind α }
 end Sum
 
+inductive Int.Fin : Int → Type
+| mk : ∀ {n : Nat} (val : Int), Int.natAbs val < n → Int.Fin n
+
+def Int.Fin.HasToString (n : Nat) : HasToString (Int.Fin n) :=
+⟨λ x ⇒ match x with
+  | Int.Fin.mk val _ ⇒ toString val⟩
+
+def int8Sz := 2 ^ 7
+def Int8 := Int.Fin int8Sz
+instance Int8.HasToString : HasToString Int8 :=
+Int.Fin.HasToString int8Sz
+
+def int16Sz := 2 ^ 15
+def Int16 := Int.Fin int16Sz
+instance Int16.HasToString : HasToString Int16 :=
+Int.Fin.HasToString int16Sz
+
+def int32Sz := 2 ^ 31
+def Int32 := Int.Fin int32Sz
+instance Int32.HasToString : HasToString Int32 :=
+Int.Fin.HasToString int32Sz
+
 namespace data.bert
 
 inductive Term
-| int : Int → Term
+| int : Int32 → Term
 -- | float : Float → Term
 | atom : String → Term
 | tuple : List Term → Term
 | bytelist : ByteString → Term
 | list : List Term → Term
 | binary : ByteString → Term
-| bigint : Integer → Term
-| bigbigint : Integer → Term
+| bigint : Int → Term
+| bigbigint : Int → Term
 
 inductive CompTerm
 | nil : CompTerm
@@ -147,7 +158,7 @@ class BERT (α : Type) :=
 instance Term.BERT : BERT Term :=
 { toTerm := id, fromTerm := Sum.inr }
 
-instance Int.BERT : BERT Int :=
+instance Int.BERT : BERT Int32 :=
 { toTerm := Term.int,
   fromTerm := λ t ⇒ match t with
     | Term.int val ⇒ Sum.inr val
@@ -160,7 +171,7 @@ instance Bool.BERT : BERT Bool :=
     | compose (CompTerm.bool false) ⇒ Sum.inr false
     | _ ⇒ Sum.inl "invalid bool type" }
 
-instance Integer.BERT : BERT Integer :=
+instance Integer.BERT : BERT Int :=
 { toTerm := Term.bigbigint,
   fromTerm := λ t ⇒ match t with
     | Term.bigint x ⇒ Sum.inr x
@@ -173,7 +184,6 @@ instance String.BERT : BERT String :=
     | Term.bytelist x ⇒ Sum.inr x
     | Term.binary x ⇒ Sum.inr x
     | Term.atom x ⇒ Sum.inr x
-    --| Term.list xs
     | _ ⇒ Sum.inl "invalid string type" }
 
 instance ByteString.BERT : BERT ByteString :=
@@ -197,6 +207,7 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
       pure (x, y)
     | _ ⇒ Sum.inl "invalid tuple type" }
 
--- TODO: BERT of Map
+def putTerm : Term → Array UInt8
+| _ ⇒ Array.empty
 
 end data.bert
