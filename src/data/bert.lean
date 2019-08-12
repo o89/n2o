@@ -106,6 +106,7 @@ Int.Fin.HasToString int32Sz
 namespace data.bert
 
 inductive Term
+| byte : UInt8 → Term
 | int : Int32 → Term
 -- | float : Float → Term
 | atom : String → Term
@@ -137,6 +138,7 @@ Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
                Term.tuple [ Term.list (Term.atom <$> os) ] ]
 
 partial def Term.toString : Term → String
+| Term.byte x ⇒ toString x
 | Term.int x ⇒ toString x
 | Term.atom (String.mk []) ⇒ ""
 | Term.atom s@(String.mk $ x :: xs) ⇒
