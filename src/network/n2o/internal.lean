@@ -10,7 +10,7 @@ instance Header.HasToString : HasToString Header :=
 
 inductive Msg
 | text : String → Msg
-| binary : Array UInt8 → Msg
+| binary : ByteArray → Msg
 
 instance : HasToString Msg :=
 ⟨λ m ⇒ match m with

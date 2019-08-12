@@ -66,9 +66,9 @@ obj* read_msg(struct lws* wsi, n2o_userdata* user, char* in, size_t len) {
     if (lws_frame_is_binary(wsi)) {
         msg = lean::alloc_cnstr(1, 1, 0);
 
-        auto buff = lean::mk_array(lean::mk_nat_obj(len), lean::box(0));
+        auto buff = lean::mk_empty_byte_array(lean::mk_nat_obj(len));
         for (size_t i = 0; i < len; i++)
-            buff = lean::array_set(buff, lean::mk_nat_obj(i), lean::box(in[i]));
+            buff = lean::byte_array_set(buff, lean::mk_nat_obj(i), in[i]);
         lean::cnstr_set(msg, 0, buff);
     } else {
         msg = lean::alloc_cnstr(0, 1, 0);
@@ -100,11 +100,11 @@ void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
             lws_callback_on_writable(wsi);
         } else {
             auto arr = lean::cnstr_get(reply, 0);
-            auto size = lean::array_size(arr);
+            auto size = lean::sarray_size(arr);
 
             auto msg = (char*) malloc(size + 1);
             for (size_t i = 0; i < size; i++)
-                msg[i] = lean::unbox(lean::array_get(arr, i));
+              msg[i] = lean::sarray_get<lean::uint8>(arr, i);
             msg[size] = '\0';
 
             user->pool->push({ Binary, msg });

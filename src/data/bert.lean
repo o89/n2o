@@ -82,9 +82,11 @@ end Sum
 inductive Int.Fin : Int → Type
 | mk : ∀ {n : Nat} (val : Int), Int.natAbs val < n → Int.Fin n
 
+def Int.Fin.val {n : Nat} : Int.Fin n → Int
+| Int.Fin.mk val _ ⇒ val
+
 def Int.Fin.HasToString (n : Nat) : HasToString (Int.Fin n) :=
-⟨λ x ⇒ match x with
-  | Int.Fin.mk val _ ⇒ toString val⟩
+⟨λ x ⇒ toString x.val⟩
 
 def int8Sz := 2 ^ 7
 def Int8 := Int.Fin int8Sz
@@ -206,8 +208,5 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
       y ← BERT.fromTerm b;
       pure (x, y)
     | _ ⇒ Sum.inl "invalid tuple type" }
-
-def putTerm : Term → Array UInt8
-| _ ⇒ Array.empty
 
 end data.bert
