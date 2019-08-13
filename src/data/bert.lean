@@ -79,35 +79,12 @@ namespace Sum
     bind := @HasBind α }
 end Sum
 
-inductive Int.Fin : Int → Type
-| mk : ∀ {n : Nat} (val : Int), Int.natAbs val < n → Int.Fin n
-
-def Int.Fin.val {n : Nat} : Int.Fin n → Int
-| Int.Fin.mk val _ ⇒ val
-
-def Int.Fin.HasToString (n : Nat) : HasToString (Int.Fin n) :=
-⟨λ x ⇒ toString x.val⟩
-
-def int8Sz := 2 ^ 7
-def Int8 := Int.Fin int8Sz
-instance Int8.HasToString : HasToString Int8 :=
-Int.Fin.HasToString int8Sz
-
-def int16Sz := 2 ^ 15
-def Int16 := Int.Fin int16Sz
-instance Int16.HasToString : HasToString Int16 :=
-Int.Fin.HasToString int16Sz
-
-def int32Sz := 2 ^ 31
-def Int32 := Int.Fin int32Sz
-instance Int32.HasToString : HasToString Int32 :=
-Int.Fin.HasToString int32Sz
-
 namespace data.bert
 
 inductive Term
 | byte : UInt8 → Term
-| int : Int32 → Term
+-- there is now no Int32 in Lean
+| int : UInt32 → Term
 -- | float : Float → Term
 | atom : String → Term
 | tuple : List Term → Term
@@ -162,7 +139,7 @@ class BERT (α : Type) :=
 instance Term.BERT : BERT Term :=
 { toTerm := id, fromTerm := Sum.inr }
 
-instance Int.BERT : BERT Int32 :=
+instance Int.BERT : BERT UInt32 :=
 { toTerm := Term.int,
   fromTerm := λ t ⇒ match t with
     | Term.int val ⇒ Sum.inr val
@@ -203,12 +180,27 @@ instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
     | _ ⇒ Sum.inl "invalid list type" }
 
 instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
-{ toTerm := λ x ⇒ Term.tuple [ BERT.toTerm (Prod.fst x), BERT.toTerm (Prod.snd x) ],
+{ toTerm := λ x ⇒ Term.tuple [ BERT.toTerm x.1, BERT.toTerm x.2 ],
   fromTerm := λ t ⇒ match t with
     | Term.tuple [a, b] ⇒ do
       x ← BERT.fromTerm a;
       y ← BERT.fromTerm b;
       pure (x, y)
     | _ ⇒ Sum.inl "invalid tuple type" }
+
+def iota : Nat → List Nat
+| 0     ⇒ [ 0 ]
+| n + 1 ⇒ (n + 1) :: iota n
+
+@[extern cpp inline "#1 << #2"]
+constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
+@[extern cpp inline "#1 >> #2"]
+constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
+
+def byte (x : UInt32) (n : Nat) : UInt8 :=
+UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
+
+def bytes (x : UInt32) : ByteArray :=
+List.toByteArray $ byte x <$> iota 3
 
 end data.bert
