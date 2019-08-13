@@ -2,7 +2,7 @@
 LEAN_PATH=$(LEAN_DIR)/library:./src:./sample-lean
 
 CPP = src/network/n2o/web/callback.cpp src/network/n2o/web/server.cpp
-LEAN = src/data/bert src/network/n2o/internal src/network/n2o/web/http sample-lean/sample
+LEAN = src/data/parser src/data/bert src/network/n2o/internal src/network/n2o/web/http sample-lean/sample
 
 LIBS = -lwebsockets
 BIN = sample
@@ -17,10 +17,12 @@ LEAN_PATH=$(LEAN_PATH) $(LEAN_DIR)/bin/lean -c $(1).cpp $(1).lean
 
 endef
 
-all: clean
-	$(foreach file,$(LEAN),$(call lean-olean,$(file)))
+all: clean olean
 	$(foreach file,$(LEAN),$(call lean-compile,$(file)))
 	$(LEAN_DIR)/bin/leanc $(CPP) $(foreach file,$(LEAN),$(file).cpp) $(LIBS) -o $(BIN) -g -Wall
+
+olean:
+	$(foreach file,$(LEAN),$(call lean-olean,$(file)))
 
 clean:
 	rm -f $(foreach file,$(LEAN),$(file).cpp) $(foreach file,$(LEAN),$(file).olean)

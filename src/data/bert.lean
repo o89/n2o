@@ -1,3 +1,5 @@
+import data.parser
+
 inductive DayOfWeek
 | monday   | tuesday | wednesday
 | thursday | friday
@@ -202,5 +204,10 @@ UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
 
 def bytes (x : UInt32) : ByteArray :=
 List.toByteArray $ byte x <$> iota 3
+
+def readByte : ByteParser Term := do
+  ByteParser.tok 97;
+  val ← ByteParser.byte;
+  pure (Term.byte val)
 
 end data.bert
