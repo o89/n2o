@@ -199,11 +199,11 @@ constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
 @[extern cpp inline "#1 >> #2"]
 constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
 
-def byte (x : UInt32) (n : Nat) : UInt8 :=
+def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
 UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
 
-def bytes (x : UInt32) : ByteArray :=
-List.toByteArray $ byte x <$> iota 3
+def UInt32.toBytes (x : UInt32) : ByteArray :=
+List.toByteArray $ UInt32.nthByte x <$> iota 3
 
 def readByte : ByteParser Term := do
   ByteParser.tok 97;
