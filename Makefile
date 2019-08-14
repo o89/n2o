@@ -2,7 +2,7 @@
 LEAN_PATH=$(LEAN_DIR)/library:./src:./sample-lean
 
 CPP = src/network/n2o/web/callback.cpp src/network/n2o/web/server.cpp
-LEAN = src/data/parser src/data/bert src/network/n2o/internal src/network/n2o/web/http sample-lean/sample
+LEAN = src/data/vector src/data/parser src/data/bert src/network/n2o/internal src/network/n2o/web/http sample-lean/sample
 
 LIBS = -lwebsockets
 BIN = sample

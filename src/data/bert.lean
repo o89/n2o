@@ -206,8 +206,22 @@ def UInt32.toBytes (x : UInt32) : ByteArray :=
 List.toByteArray $ UInt32.nthByte x <$> iota 3
 
 def readByte : ByteParser Term := do
-  ByteParser.tok 97;
-  val ← ByteParser.byte;
+  Parser.tok 97;
+  val ← Parser.byte;
   pure (Term.byte val)
+
+def UInt8.shiftl (x : UInt8) (y : UInt32) : UInt32 :=
+UInt32.shiftl (UInt32.ofNat x.toNat) y
+
+def readDword : ByteParser Term := do
+  Parser.tok 98;
+  res ← Parser.count Parser.byte 4;
+  match res with
+  | a ∷ b ∷ c ∷ d ∷ Vector.nil ⇒
+    let a' := UInt8.shiftl a (8 * 3);
+    let b' := UInt8.shiftl b (8 * 2);
+    let c' := UInt8.shiftl c (8 * 1);
+    let d' := UInt8.shiftl d (8 * 0);
+    pure (Term.int $ a' + b' + c' + d')
 
 end data.bert
