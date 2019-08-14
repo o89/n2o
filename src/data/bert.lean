@@ -92,7 +92,7 @@ inductive Term
 | tuple : List Term → Term
 | bytelist : ByteString → Term
 | list : List Term → Term
-| binary : ByteString → Term
+| binary : ByteArray → Term
 | bigint : Int → Term
 | bigbigint : Int → Term
 
@@ -126,10 +126,7 @@ partial def Term.toString : Term → String
 | Term.tuple ts ⇒ "{" ++ String.intercalate ", " (Term.toString <$> ts) ++ "}"
 | Term.bytelist s ⇒ "[" ++ toString s ++ "]"
 | Term.list ts ⇒ "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
-| Term.binary s ⇒
-  let wrap := λ s ⇒ "<<" ++ s ++ ">>";
-  if s.all Char.isAscii then wrap ("\"" ++ s ++ "\"")
-  else wrap (toString s)
+| Term.binary s ⇒ "<<" ++ String.intercalate ", " (toString <$> s.toList) ++ ">>"
 | Term.bigint x ⇒ toString x
 | Term.bigbigint x ⇒ toString x
 instance : HasToString Term := ⟨Term.toString⟩
@@ -165,7 +162,6 @@ instance String.BERT : BERT String :=
 { toTerm := Term.bytelist,
   fromTerm := λ t ⇒ match t with
     | Term.bytelist x ⇒ Sum.inr x
-    | Term.binary x ⇒ Sum.inr x
     | Term.atom x ⇒ Sum.inr x
     | _ ⇒ Sum.inl "invalid string type" }
 
@@ -255,13 +251,37 @@ def readAtom : ByteParser Term := do
   chars ← Parser.count ch N.toNat;
   pure (Term.atom chars.toList.asString)
 
+def readSmallAtom : ByteParser Term := do
+  Parser.tok 115; N ← Parser.byte;
+  chars ← Parser.count ch N.toNat;
+  pure (Term.atom chars.toList.asString)
+
 def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
   Parser.tok 104; N ← Parser.byte;
   elems ← Parser.count readTerm N.toNat;
   pure (Term.tuple elems.toList)
 
+def readLargeTuple (readTerm : ByteParser Term) : ByteParser Term := do
+  Parser.tok 104; N ← dword;
+  elems ← Parser.count readTerm N.toNat;
+  pure (Term.tuple elems.toList)
+
+def readNil : ByteParser Term := do Parser.tok 106; pure (Term.list [])
+def readList (readTerm : ByteParser Term) : ByteParser Term := do
+  Parser.tok 108; N ← dword;
+  elems ← Parser.count readTerm N.toNat;
+  optional readNil;
+  pure (Term.list elems.toList)
+
+def readBinary : ByteParser Term := do
+  Parser.tok 109; N ← dword;
+  elems ← Parser.count Parser.byte N.toNat;
+  pure (Term.binary elems.toList.toByteArray)
+
 def readTerm' (readTerm : ByteParser Term) : ByteParser Term :=
-readByte <|> readDword <|> readAtom <|> readTuple readTerm
+readByte <|> readDword <|> readAtom <|>
+readTuple readTerm <|> readLargeTuple readTerm <|>
+readList readTerm <|> readBinary <|> readSmallAtom
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
 
