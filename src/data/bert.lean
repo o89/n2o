@@ -278,10 +278,29 @@ def readBinary : ByteParser Term := do
   elems ← Parser.count Parser.byte N.toNat;
   pure (Term.binary elems.toList.toByteArray)
 
+def IsMinus : ByteParser Bool :=
+(do Parser.tok 0; pure false) <|>
+(do Parser.tok 1; pure true)
+
+def readBignum' {α : Type}
+  (p : ByteParser α) (toNat : α → Nat) (tok : UInt8) :
+  ByteParser Term := do
+  Parser.tok 110; n ← p;
+  isMinus ← IsMinus; d ← Parser.count Parser.byte (toNat n);
+  let x := Int.ofNat
+    (List.foldl Nat.add 0 $
+      (λ (pair : Nat × UInt8) ⇒
+        pair.2.toNat * (256 ^ pair.1)) <$> d.toList.enum);
+  pure (Term.bigint $ if isMinus then -x else x)
+
+def readSmallBignum := readBignum' Parser.byte UInt8.toNat 110
+def readLargeBignum := readBignum' dword UInt32.toNat 111
+
 def readTerm' (readTerm : ByteParser Term) : ByteParser Term :=
 readByte <|> readDword <|> readAtom <|>
 readTuple readTerm <|> readLargeTuple readTerm <|>
-readList readTerm <|> readBinary <|> readSmallAtom
+readList readTerm <|> readBinary <|> readSmallAtom <|>
+readSmallBignum <|> readLargeBignum
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
 

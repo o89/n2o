@@ -6,7 +6,7 @@ infixr ` ∷ `:67 := Vector.cons
 
 namespace Vector
 
-variables {n : Nat} {α : Type}
+variables {n : Nat} {α β : Type}
 
 def head : Vector α (n + 1) → α
 | x ∷ xs ⇒ x
