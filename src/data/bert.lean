@@ -242,4 +242,27 @@ def readDword : ByteParser Term := do
   Parser.tok 98; res ← dword;
   pure (Term.int res)
 
+def ch : ByteParser Char :=
+λ input pos ⇒
+  if pos < input.size then
+    let ch := UInt32.ofNat (input.get pos).toNat;
+    if h : isValidChar ch then ParseResult.done (pos + 1) (Char.mk ch h)
+    else ParseResult.fail _ pos [ "<valid char>" ]
+  else ParseResult.fail _ pos [ "<char>" ]
+
+def readAtom : ByteParser Term := do
+  Parser.tok 100; N ← word;
+  chars ← Parser.count ch N.toNat;
+  pure (Term.atom chars.toList.asString)
+
+def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
+  Parser.tok 104; N ← Parser.byte;
+  elems ← Parser.count readTerm N.toNat;
+  pure (Term.tuple elems.toList)
+
+def readTerm' (readTerm : ByteParser Term) : ByteParser Term :=
+readByte <|> readDword <|> readAtom <|> readTuple readTerm
+
+def readTerm := do Parser.tok 131; Parser.fix readTerm'
+
 end data.bert

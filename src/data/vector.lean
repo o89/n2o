@@ -14,4 +14,8 @@ def head : Vector α (n + 1) → α
 def tail : Vector α (n + 1) → Vector α n
 | x ∷ xs ⇒ xs
 
+def toList : ∀ {n : Nat}, Vector α n → List α
+| 0, Vector.nil ⇒ []
+| n + 1, x ∷ xs ⇒ x :: toList xs
+
 end Vector
