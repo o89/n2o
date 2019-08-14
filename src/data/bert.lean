@@ -262,7 +262,7 @@ def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
   pure (Term.tuple elems.toList)
 
 def readLargeTuple (readTerm : ByteParser Term) : ByteParser Term := do
-  Parser.tok 104; N ← dword;
+  Parser.tok 105; N ← dword;
   elems ← Parser.count readTerm N.toNat;
   pure (Term.tuple elems.toList)
 
