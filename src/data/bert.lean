@@ -195,6 +195,11 @@ def iota : Nat → List Nat
 | n + 1 ⇒ (n + 1) :: iota n
 
 @[extern cpp inline "#1 << #2"]
+constant UInt16.shiftl (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
+@[extern cpp inline "#1 >> #2"]
+constant UInt16.shiftr (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
+
+@[extern cpp inline "#1 << #2"]
 constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
 @[extern cpp inline "#1 >> #2"]
 constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
@@ -205,23 +210,36 @@ UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
 def UInt32.toBytes (x : UInt32) : ByteArray :=
 List.toByteArray $ UInt32.nthByte x <$> iota 3
 
-def readByte : ByteParser Term := do
-  Parser.tok 97;
-  val ← Parser.byte;
-  pure (Term.byte val)
+def UInt8.shiftl16 (x : UInt8) (y : UInt16) : UInt16 :=
+UInt16.shiftl (UInt16.ofNat x.toNat) y
 
-def UInt8.shiftl (x : UInt8) (y : UInt32) : UInt32 :=
+def UInt8.shiftl32 (x : UInt8) (y : UInt32) : UInt32 :=
 UInt32.shiftl (UInt32.ofNat x.toNat) y
 
-def readDword : ByteParser Term := do
-  Parser.tok 98;
+def word : ByteParser UInt16 := do
+  res ← Parser.count Parser.byte 2;
+  match res with
+  | a ∷ b ∷ Vector.nil ⇒
+    let a' := UInt8.shiftl16 a (8 * 1);
+    let b' := UInt8.shiftl16 b (8 * 0);
+    pure (a' + b')
+
+def dword : ByteParser UInt32 := do
   res ← Parser.count Parser.byte 4;
   match res with
   | a ∷ b ∷ c ∷ d ∷ Vector.nil ⇒
-    let a' := UInt8.shiftl a (8 * 3);
-    let b' := UInt8.shiftl b (8 * 2);
-    let c' := UInt8.shiftl c (8 * 1);
-    let d' := UInt8.shiftl d (8 * 0);
-    pure (Term.int $ a' + b' + c' + d')
+    let a' := UInt8.shiftl32 a (8 * 3);
+    let b' := UInt8.shiftl32 b (8 * 2);
+    let c' := UInt8.shiftl32 c (8 * 1);
+    let d' := UInt8.shiftl32 d (8 * 0);
+    pure (a' + b' + c' + d')
+
+def readByte : ByteParser Term := do
+  Parser.tok 97; val ← Parser.byte;
+  pure (Term.byte val)
+
+def readDword : ByteParser Term := do
+  Parser.tok 98; res ← dword;
+  pure (Term.int res)
 
 end data.bert
