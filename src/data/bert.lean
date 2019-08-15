@@ -1,5 +1,31 @@
 import data.parser
 
+@[extern cpp inline "#1 << #2"]
+constant UInt16.shiftl (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
+@[extern cpp inline "#1 >> #2"]
+constant UInt16.shiftr (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
+
+@[extern cpp inline "#1 << #2"]
+constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
+@[extern cpp inline "#1 >> #2"]
+constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
+
+def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
+UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
+
+def List.iotaZero : Nat → List Nat
+| 0     ⇒ [ 0 ]
+| n + 1 ⇒ (n + 1) :: List.iotaZero n
+
+def UInt32.toBytes (x : UInt32) : List UInt8 :=
+UInt32.nthByte x <$> List.iotaZero 3
+
+def UInt8.shiftl16 (x : UInt8) (y : UInt16) : UInt16 :=
+UInt16.shiftl (UInt16.ofNat x.toNat) y
+
+def UInt8.shiftl32 (x : UInt8) (y : UInt32) : UInt32 :=
+UInt32.shiftl (UInt32.ofNat x.toNat) y
+
 inductive DayOfWeek
 | monday   | tuesday | wednesday
 | thursday | friday
@@ -80,6 +106,23 @@ namespace Sum
   { pure := λ _ x ⇒ Sum.inr x,
     bind := @HasBind α }
 end Sum
+
+def andthen {α β γ : Type} (f : α → β) (g : β → γ) (x : α) : γ :=
+g (f x)
+infixr ` ≫ `:80 := andthen
+
+def Put := ByteArray → ByteArray
+
+namespace Put
+   def byte (x : UInt8) : Put :=
+   λ arr ⇒ ByteArray.push arr x
+
+   def tell : List UInt8 → Put
+   | [] ⇒ id
+   | x :: xs ⇒ byte x ≫ tell xs
+
+   def run (p : Put) : ByteArray := p ByteArray.empty
+end Put
 
 namespace data.bert
 
@@ -186,32 +229,6 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
       pure (x, y)
     | _ ⇒ Sum.inl "invalid tuple type" }
 
-def iota : Nat → List Nat
-| 0     ⇒ [ 0 ]
-| n + 1 ⇒ (n + 1) :: iota n
-
-@[extern cpp inline "#1 << #2"]
-constant UInt16.shiftl (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
-@[extern cpp inline "#1 >> #2"]
-constant UInt16.shiftr (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
-
-@[extern cpp inline "#1 << #2"]
-constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
-@[extern cpp inline "#1 >> #2"]
-constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
-
-def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
-UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
-
-def UInt32.toBytes (x : UInt32) : ByteArray :=
-List.toByteArray $ UInt32.nthByte x <$> iota 3
-
-def UInt8.shiftl16 (x : UInt8) (y : UInt16) : UInt16 :=
-UInt16.shiftl (UInt16.ofNat x.toNat) y
-
-def UInt8.shiftl32 (x : UInt8) (y : UInt32) : UInt32 :=
-UInt32.shiftl (UInt32.ofNat x.toNat) y
-
 def word : ByteParser UInt16 := do
   res ← Parser.count Parser.byte 2;
   match res with
@@ -234,9 +251,15 @@ def readByte : ByteParser Term := do
   Parser.tok 97; val ← Parser.byte;
   pure (Term.byte val)
 
+def writeByte (x : UInt8) : Put :=
+  Put.byte 97 ≫ Put.byte x
+
 def readDword : ByteParser Term := do
   Parser.tok 98; res ← dword;
   pure (Term.int res)
+
+def writeDword (x : UInt32) : Put :=
+  Put.byte 98 ≫ Put.tell x.toBytes
 
 def ch : ByteParser Char :=
 λ input pos ⇒
