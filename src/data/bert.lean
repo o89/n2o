@@ -105,23 +105,22 @@ namespace Sum
   instance {α : Type} : Monad (Sum α) :=
   { pure := λ _ x ⇒ Sum.inr x,
     bind := @HasBind α }
+
+  @[matchPattern] abbrev fail {α β : Type} : α → Sum α β := Sum.inl
+  @[matchPattern] abbrev ok {α β : Type} : β → Sum α β := Sum.inr
 end Sum
 
-def andthen {α β γ : Type} (f : α → β) (g : β → γ) (x : α) : γ :=
-g (f x)
-infixr ` ≫ `:80 := andthen
-
-def Put := ByteArray → ByteArray
+def Put := ByteArray → Sum String ByteArray
 
 namespace Put
    def byte (x : UInt8) : Put :=
-   λ arr ⇒ ByteArray.push arr x
+   λ arr ⇒ Sum.ok (ByteArray.push arr x)
 
    def tell : List UInt8 → Put
-   | [] ⇒ id
-   | x :: xs ⇒ byte x ≫ tell xs
+   | [] ⇒ pure
+   | x :: xs ⇒ byte x >=> tell xs
 
-   def run (p : Put) : ByteArray := p ByteArray.empty
+   def run (p : Put) : Sum String ByteArray := p ByteArray.empty
 end Put
 
 namespace data.bert
@@ -252,14 +251,14 @@ def readByte : ByteParser Term := do
   pure (Term.byte val)
 
 def writeByte (x : UInt8) : Put :=
-  Put.byte 97 ≫ Put.byte x
+  Put.byte 97 >=> Put.byte x
 
 def readDword : ByteParser Term := do
   Parser.tok 98; res ← dword;
   pure (Term.int res)
 
 def writeDword (x : UInt32) : Put :=
-  Put.byte 98 ≫ Put.tell x.toBytes
+  Put.byte 98 >=> Put.tell x.toBytes
 
 def ch : ByteParser Char :=
 λ input pos ⇒
