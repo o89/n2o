@@ -116,9 +116,8 @@ namespace Put
    def byte (x : UInt8) : Put :=
    λ arr ⇒ Sum.ok (ByteArray.push arr x)
 
-   def tell : List UInt8 → Put
-   | [] ⇒ pure
-   | x :: xs ⇒ byte x >=> tell xs
+   def tell : List UInt8 → Put :=
+   List.foldr (mcomp ∘ byte) pure
 
    def run (p : Put) : Sum String ByteArray := p ByteArray.empty
 end Put
