@@ -10,12 +10,21 @@ constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
 @[extern cpp inline "#1 >> #2"]
 constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
 
+def UInt16.crop (x : UInt16) : UInt8 := UInt8.ofNat x.toNat
+def UInt32.crop (x : UInt32) : UInt8 := UInt8.ofNat x.toNat
+
+def UInt16.nthByte (x : UInt16) (n : Nat) : UInt8 :=
+(UInt16.land (UInt16.shiftr x $ 8 * UInt16.ofNat n) 255).crop
+
 def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
-UInt8.ofNat (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toNat
+(UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).crop
 
 def List.iotaZero : Nat → List Nat
 | 0     ⇒ [ 0 ]
 | n + 1 ⇒ (n + 1) :: List.iotaZero n
+
+def UInt16.toBytes (x : UInt16) : List UInt8 :=
+UInt16.nthByte x <$> List.iotaZero 3
 
 def UInt32.toBytes (x : UInt32) : List UInt8 :=
 UInt32.nthByte x <$> List.iotaZero 3
@@ -25,6 +34,9 @@ UInt16.shiftl (UInt16.ofNat x.toNat) y
 
 def UInt8.shiftl32 (x : UInt8) (y : UInt32) : UInt32 :=
 UInt32.shiftl (UInt32.ofNat x.toNat) y
+
+def String.bytes (x : String) : List UInt8 :=
+(UInt8.ofNat ∘ Char.toNat) <$> x.toList
 
 inductive DayOfWeek
 | monday   | tuesday | wednesday
@@ -120,6 +132,8 @@ namespace Put
    List.foldr (mcomp ∘ byte) pure
 
    def run (p : Put) : Sum String ByteArray := p ByteArray.empty
+
+   def fail (s : String) : Put := λ _ ⇒ Sum.fail s
 end Put
 
 namespace data.bert
@@ -276,6 +290,13 @@ def readSmallAtom : ByteParser Term := do
   Parser.tok 115; N ← Parser.byte;
   chars ← Parser.count ch N.toNat;
   pure (Term.atom chars.toList.asString)
+
+def writeAtom (x : String) : Put :=
+  if x.length < uint8Sz then
+    Put.byte 115 >=> Put.byte (UInt8.ofNat x.length) >=> Put.tell x.bytes
+  else if x.length < uint16Sz then
+    Put.byte 100 >=> Put.tell (UInt16.ofNat x.length).toBytes >=> Put.tell x.bytes
+  else Put.fail "BERT atom too long (≥ 65536)"
 
 def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
   Parser.tok 104; N ← Parser.byte;
