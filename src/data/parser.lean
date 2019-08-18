@@ -21,6 +21,14 @@ instance : BuiltFrom ByteArray UInt8 :=
 
 abbrev ByteParser := Parser ByteArray UInt8
 
+def ByteParser.ch : ByteParser Char :=
+λ input pos ⇒
+  if pos < input.size then
+    let ch := UInt32.ofNat (input.get pos).toNat;
+    if h : isValidChar ch then ParseResult.done (pos + 1) (Char.mk ch h)
+    else ParseResult.fail _ pos [ "<valid char>" ]
+  else ParseResult.fail _ pos [ "<char>" ]
+
 namespace Parser
 variables {Γ π : Type} [BuiltFrom Γ π] {α β : Type}
 

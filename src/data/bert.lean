@@ -265,6 +265,7 @@ def dword : ByteParser UInt32 := do
     let d' := UInt8.shiftl32 d (8 * 0);
     pure (a' + b' + c' + d')
 
+-- decode
 def readByte : ByteParser Term := do
   Parser.tok 97; val ← Parser.byte;
   pure (Term.byte val)
@@ -273,33 +274,15 @@ def readDword : ByteParser Term := do
   Parser.tok 98; res ← dword;
   pure (Term.int res)
 
-def writeDword (x : UInt32) : Put :=
-  Put.byte 98 >=> Put.tell x.toBytes
-
-def ch : ByteParser Char :=
-λ input pos ⇒
-  if pos < input.size then
-    let ch := UInt32.ofNat (input.get pos).toNat;
-    if h : isValidChar ch then ParseResult.done (pos + 1) (Char.mk ch h)
-    else ParseResult.fail _ pos [ "<valid char>" ]
-  else ParseResult.fail _ pos [ "<char>" ]
-
 def readAtom : ByteParser Term := do
   Parser.tok 100; N ← word;
-  chars ← Parser.count ch N.toNat;
+  chars ← Parser.count ByteParser.ch N.toNat;
   pure (Term.atom chars.toList.asString)
 
 def readSmallAtom : ByteParser Term := do
   Parser.tok 115; N ← Parser.byte;
-  chars ← Parser.count ch N.toNat;
+  chars ← Parser.count ByteParser.ch N.toNat;
   pure (Term.atom chars.toList.asString)
-
-def writeAtom (x : String) : Put :=
-  if x.length < uint8Sz then
-    Put.byte 115 >=> Put.byte x.length >=> Put.tell x.bytes
-  else if x.length < uint16Sz then
-    Put.byte 100 >=> Put.word x.length >=> Put.tell x.bytes
-  else Put.fail "BERT atom too long (≥ 65536)"
 
 def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
   Parser.tok 104; N ← Parser.byte;
@@ -348,6 +331,14 @@ readList readTerm <|> readBinary <|> readSmallAtom <|>
 readSmallBignum <|> readLargeBignum
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
+
+-- encode
+def writeAtom (x : String) : Put :=
+  if x.length < uint8Sz then
+    Put.byte 115 >=> Put.byte x.length >=> Put.tell x.bytes
+  else if x.length < uint16Sz then
+    Put.byte 100 >=> Put.word x.length >=> Put.tell x.bytes
+  else Put.fail "BERT atom too long (≥ 65536)"
 
 partial def writeTerm' : Term → Put
 | Term.byte x ⇒ Put.byte 97 >=> Put.raw x
