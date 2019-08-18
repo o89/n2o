@@ -125,15 +125,21 @@ end Sum
 def Put := ByteArray → Sum String ByteArray
 
 namespace Put
-   def byte (x : UInt8) : Put :=
+   def raw (x : UInt8) : Put :=
    λ arr ⇒ Sum.ok (ByteArray.push arr x)
 
    def tell : List UInt8 → Put :=
-   List.foldr (mcomp ∘ byte) pure
+   List.foldr (mcomp ∘ raw) pure
+
+   def byte (x : Nat) : Put := Put.raw (UInt8.ofNat x)
+   def word (x : Nat) : Put := Put.tell (UInt16.ofNat x).toBytes
+   def dword (x : Nat) : Put := Put.tell (UInt32.ofNat x).toBytes
 
    def run (p : Put) : Sum String ByteArray := p ByteArray.empty
 
    def fail (s : String) : Put := λ _ ⇒ Sum.fail s
+
+   instance : Inhabited Put := ⟨Put.fail "unreachable code was reached"⟩
 end Put
 
 namespace data.bert
@@ -263,9 +269,6 @@ def readByte : ByteParser Term := do
   Parser.tok 97; val ← Parser.byte;
   pure (Term.byte val)
 
-def writeByte (x : UInt8) : Put :=
-  Put.byte 97 >=> Put.byte x
-
 def readDword : ByteParser Term := do
   Parser.tok 98; res ← dword;
   pure (Term.int res)
@@ -293,9 +296,9 @@ def readSmallAtom : ByteParser Term := do
 
 def writeAtom (x : String) : Put :=
   if x.length < uint8Sz then
-    Put.byte 115 >=> Put.byte (UInt8.ofNat x.length) >=> Put.tell x.bytes
+    Put.byte 115 >=> Put.byte x.length >=> Put.tell x.bytes
   else if x.length < uint16Sz then
-    Put.byte 100 >=> Put.tell (UInt16.ofNat x.length).toBytes >=> Put.tell x.bytes
+    Put.byte 100 >=> Put.word x.length >=> Put.tell x.bytes
   else Put.fail "BERT atom too long (≥ 65536)"
 
 def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
@@ -345,5 +348,21 @@ readList readTerm <|> readBinary <|> readSmallAtom <|>
 readSmallBignum <|> readLargeBignum
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
+
+partial def writeTerm' : Term → Put
+| Term.byte x ⇒ Put.byte 97 >=> Put.raw x
+| Term.int x ⇒ Put.byte 98 >=> Put.tell x.toBytes
+| Term.atom s ⇒ writeAtom s
+| Term.tuple x ⇒
+  let tuple := List.foldr (mcomp ∘ writeTerm') pure;
+  if x.length < uint8Sz then
+    Put.byte 104 >=> Put.byte x.length >=> tuple x
+  else if x.length < uint32Sz then
+    Put.byte 105 >=> Put.dword x.length >=> tuple x
+  else Put.fail "BERT tuple too long (≥ 4294967296)"
+| _ ⇒ Put.fail "not implemented yet"
+
+def writeTerm (x : Term) : Sum String ByteArray :=
+Put.run (Put.byte 131 >=> writeTerm' x)
 
 end data.bert
