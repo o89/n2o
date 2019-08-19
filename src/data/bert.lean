@@ -264,6 +264,15 @@ partial def writeTerm' : Term → Put
   else if x.length < uint32Sz then
     Put.byte 105 >> Put.dword x.length >> tuple x
   else Put.fail "BERT tuple too long (≥ 4294967296)"
+| Term.list x ⇒
+  if x.length < uint32Sz then
+    Put.byte 108 >> Put.dword x.length >>
+    List.foldr (andthen ∘ writeTerm') (Put.byte 106) x
+  else Put.fail "BERT list too long (≥ 4294967296)"
+| Term.binary x ⇒
+  if x.size < uint32Sz then
+    Put.byte 109 >> Put.dword x.size >> Put.tell x
+  else Put.fail "BERT binary long (≥ 4294967296)"
 | _ ⇒ Put.fail "not implemented yet"
 
 def writeTerm (x : Term) : Sum String ByteArray :=
