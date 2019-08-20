@@ -68,7 +68,6 @@ inductive Term
 | list : List Term → Term
 | binary : ByteArray → Term
 | bigint : Int → Term
-| bigbigint : Int → Term
 
 inductive CompTerm
 | nil : CompTerm
@@ -102,7 +101,6 @@ partial def Term.toString : Term → String
 | Term.list ts ⇒ "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
 | Term.binary s ⇒ "<<" ++ String.intercalate ", " (toString <$> s.toList) ++ ">>"
 | Term.bigint x ⇒ toString x
-| Term.bigbigint x ⇒ toString x
 instance : HasToString Term := ⟨Term.toString⟩
 
 class BERT (α : Type) :=
@@ -126,10 +124,9 @@ instance Bool.BERT : BERT Bool :=
     | _ ⇒ Sum.inl "invalid bool type" }
 
 instance Integer.BERT : BERT Int :=
-{ toTerm := Term.bigbigint,
+{ toTerm := Term.bigint,
   fromTerm := λ t ⇒ match t with
     | Term.bigint x ⇒ Sum.inr x
-    | Term.bigbigint x ⇒ Sum.inr x
     | _ ⇒ Sum.inl "invalid integer type" }
 
 instance String.BERT : BERT String :=
@@ -246,6 +243,22 @@ readSmallBignum <|> readLargeBignum
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
 
 -- encode
+partial def Nat.toBytesAux : Nat → ByteArray → ByteArray | x, buff ⇒
+if x > 256 then Nat.toBytesAux (x / 256) (buff.push (UInt8.ofNat $ x % 256))
+else buff.push (UInt8.ofNat x)
+
+def Nat.toBytes (x : Nat) : ByteArray :=
+Nat.toBytesAux x ByteArray.empty
+
+def writeBigint (x : Int) : Put :=
+  let enc := Nat.toBytes x.natAbs;
+  let sign := if x > 0 then Put.byte 0 else Put.byte 1;
+  if enc.size < uint8Sz then
+    Put.byte 110 >> Put.byte enc.size >> sign >> Put.tell enc
+  else if enc.size < uint32Sz then
+    Put.byte 111 >> Put.dword enc.size >> sign >> Put.tell enc
+  else Put.fail "BERT integer too big"
+
 def writeAtom (x : String) : Put :=
   if x.length < uint8Sz then
     Put.byte 115 >> Put.byte x.length >> Put.tell x.bytes
@@ -273,6 +286,7 @@ partial def writeTerm' : Term → Put
   if x.size < uint32Sz then
     Put.byte 109 >> Put.dword x.size >> Put.tell x
   else Put.fail "BERT binary long (≥ 4294967296)"
+| Term.bigint x ⇒ writeBigint x
 | _ ⇒ Put.fail "not implemented yet"
 
 def writeTerm (x : Term) : Sum String ByteArray :=
