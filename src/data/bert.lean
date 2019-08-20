@@ -194,6 +194,11 @@ def readSmallAtom : ByteParser Term := do
   chars ← Parser.count ByteParser.ch N.toNat;
   pure (Term.atom chars.toList.asString)
 
+def readBytelist : ByteParser Term := do
+  Parser.tok 107; N ← word;
+  chars ← Parser.count ByteParser.ch N.toNat;
+  pure (Term.atom chars.toList.asString)
+
 def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
   Parser.tok 104; N ← Parser.byte;
   elems ← Parser.count readTerm N.toNat;
@@ -238,7 +243,7 @@ def readTerm' (readTerm : ByteParser Term) : ByteParser Term :=
 readByte <|> readDword <|> readAtom <|>
 readTuple readTerm <|> readLargeTuple readTerm <|>
 readList readTerm <|> readBinary <|> readSmallAtom <|>
-readSmallBignum <|> readLargeBignum
+readSmallBignum <|> readLargeBignum <|> readBytelist
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
 
@@ -266,6 +271,13 @@ def writeAtom (x : String) : Put :=
     Put.byte 100 >> Put.word x.length >> Put.tell x.bytes
   else Put.fail "BERT atom too long (≥ 65536)"
 
+def writeBytelist (x : ByteString) : Put :=
+  if x.length < uint16Sz then
+    if x.all Char.isAscii then
+      Put.byte 107 >> Put.word x.length >> Put.tell x.bytes
+    else Put.fail "BERT bytelist isn’t ASCII"
+  else Put.fail "BERT bytelist too long (≥ 65536)"
+
 partial def writeTerm' : Term → Put
 | Term.byte x ⇒ Put.byte 97 >> Put.raw x
 | Term.int x ⇒ Put.byte 98 >> Put.tell x.toBytes
@@ -287,7 +299,7 @@ partial def writeTerm' : Term → Put
     Put.byte 109 >> Put.dword x.size >> Put.tell x
   else Put.fail "BERT binary long (≥ 4294967296)"
 | Term.bigint x ⇒ writeBigint x
-| _ ⇒ Put.fail "not implemented yet"
+| Term.bytelist s ⇒ writeBytelist s
 
 def writeTerm (x : Term) : Sum String ByteArray :=
 Put.run (Put.byte 131 >> writeTerm' x)
