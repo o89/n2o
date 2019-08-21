@@ -272,14 +272,15 @@ def writeBigint (x : Int) : Put :=
   else Put.fail "BERT integer too big"
 
 def writeAtom (x : String) : Put :=
-  if x.length < uint8Sz then
-    Put.byte 119 >> Put.byte x.length >> Put.unicode x
-  else if x.length < uint16Sz then
-    Put.byte 118 >> Put.word x.length >> Put.unicode x
+  if x.utf8ByteSize < uint8Sz then
+    Put.byte 119 >> Put.byte x.utf8ByteSize >> Put.unicode x
+  else if x.utf8ByteSize < uint16Sz then
+    Put.byte 118 >> Put.word x.utf8ByteSize >> Put.unicode x
   else Put.fail "BERT atom too long (≥ 65536)"
   
 def writeString (x : String) : Put :=
-  if x.length < uint16Sz then Put.byte 107 >> Put.unicode x
+  if x.utf8ByteSize < uint16Sz then
+    Put.byte 107 >> Put.word x.utf8ByteSize >> Put.unicode x
   else Put.fail "BERT bytelist too long (≥ 65536)"
 
 partial def writeTerm' : Term → Put
