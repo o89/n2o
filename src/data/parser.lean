@@ -10,6 +10,7 @@ class BuiltFrom (Γ : Type) (π : Type) :=
 (size {} : Γ → Nat)
 (eq {} : π → π → Bool)
 (get {} : Γ → Nat → π)
+(escape {} : π → String)
 
 def Parser (Γ π : Type) [BuiltFrom Γ π] (α : Type) :=
 ∀ (input : Γ) (start : Nat), ParseResult α
@@ -17,7 +18,8 @@ def Parser (Γ π : Type) [BuiltFrom Γ π] (α : Type) :=
 instance : BuiltFrom ByteArray UInt8 :=
 { size := ByteArray.size,
   eq := HasBeq.beq,
-  get := ByteArray.get }
+  get := ByteArray.get,
+  escape := toString }
 
 abbrev ByteParser := Parser ByteArray UInt8
 
@@ -116,8 +118,12 @@ def count (p : Parser Γ π α) : ∀ n, Parser Γ π (Vector α n)
 | 0 ⇒ pure Vector.nil
 | n + 1 ⇒ Vector.cons <$> p <*> count n
 
+partial def countLength (p : Parser Γ π (α × Nat)) : Nat → Parser Γ π (List α)
+| 0 ⇒ pure []
+| m ⇒ do (x, n) ← p; xs ← countLength (m - n); pure (x :: xs)
+
 def tok (b : π) : Parser Γ π Unit :=
-do sat (BuiltFrom.eq Γ b); eps
+decorateError (BuiltFrom.escape Γ b) $ do sat (BuiltFrom.eq Γ b); eps
 
 def remaining : Parser Γ π Nat :=
 λ input pos ⇒ ParseResult.done pos (BuiltFrom.size π input - pos)
@@ -134,6 +140,8 @@ match (p <* eof) input 0 with
 
 end Parser
 
+def Prod.rev {α β : Type} (y : β) (x : α) : α × β := (x, y)
+
 namespace ByteParser.utf8
   def isHelpful (x : UInt8) : Bool := x.shiftr 6 = 0b10
 
@@ -146,34 +154,36 @@ namespace ByteParser.utf8
     if h : isValidChar x then pure (Char.mk x h)
     else Parser.fail "invalid character"
 
-  def readFirst : ByteParser Char := Parser.decorateError "<1>" $ do
-    a ← Parser.byte; guard (isFirst a); parseValidChar a.toUInt32
+  def readFirst : ByteParser (Char × Nat) := Parser.decorateError "<1>" $ do
+    a ← Parser.byte; guard (isFirst a); Prod.rev 1 <$> parseValidChar a.toUInt32
 
-  def readSecond : ByteParser Char := Parser.decorateError "<2>" $ do
+  def readSecond : ByteParser (Char × Nat) := Parser.decorateError "<2>" $ do
     a ← Parser.byte; b ← Parser.byte;
     guard (isSecond a); guard (isHelpful b);
-    parseValidChar $ (a.toUInt32.land 0b00011111).shiftl 6 +
-                      b.toUInt32.land 0b00111111
+    Prod.rev 2 <$> (parseValidChar $
+      (a.toUInt32.land 0b00011111).shiftl 6 +
+       b.toUInt32.land 0b00111111)
 
-  def readThird : ByteParser Char := Parser.decorateError "<3>" $ do
+  def readThird : ByteParser (Char × Nat) := Parser.decorateError "<3>" $ do
     a ← Parser.byte; b ← Parser.byte; c ← Parser.byte;
     guard (isThird a); guard (isHelpful b); guard (isHelpful c);
-    parseValidChar $ (a.toUInt32.land 0b00001111).shiftl 12 +
-                     (b.toUInt32.land 0b00111111).shiftl 6 +
-                      c.toUInt32.land 0b00111111 
+    Prod.rev 3 <$> (parseValidChar $
+      (a.toUInt32.land 0b00001111).shiftl 12 +
+      (b.toUInt32.land 0b00111111).shiftl 6 +
+       c.toUInt32.land 0b00111111 )
 
-  def readFourth : ByteParser Char := Parser.decorateError "<4>" $ do
+  def readFourth : ByteParser (Char × Nat) := Parser.decorateError "<4>" $ do
     a ← Parser.byte; b ← Parser.byte; c ← Parser.byte; d ← Parser.byte;
     guard (isFourth a); guard (isHelpful b);
     guard (isHelpful c); guard (isHelpful d);
-    parseValidChar $ (a.toUInt32.land 0b00000111).shiftl 18 +
-                     (b.toUInt32.land 0b00111111).shiftl 12 +
-                     (c.toUInt32.land 0b00111111).shiftl 6 +
-                      d.toUInt32.land 0b00111111
+    Prod.rev 4 <$> (parseValidChar $
+      (a.toUInt32.land 0b00000111).shiftl 18 +
+      (b.toUInt32.land 0b00111111).shiftl 12 +
+      (c.toUInt32.land 0b00111111).shiftl 6 +
+       d.toUInt32.land 0b00111111)
 
-  def uchr : ByteParser Char := readFirst <|> readSecond <|> readThird <|> readFourth
-  def string : ByteParser String := String.mk <$> Parser.many uchr
+  def uchr := readFirst <|> readSecond <|> readThird <|> readFourth
   def stringWithLength (s : Nat) : ByteParser String :=
-  (String.mk ∘ Vector.toList) <$> Parser.count uchr s
+  String.mk <$> Parser.countLength uchr s
 end ByteParser.utf8
 
