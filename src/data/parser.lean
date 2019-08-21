@@ -1,6 +1,6 @@
 -- data.buffer.parser from Lean 3 stdlib
 
-import data.vector
+import data.vector data.bytes
 
 inductive ParseResult (α : Type)
 | done (pos : Nat) (result : α) : ParseResult
@@ -133,3 +133,46 @@ match (p <* eof) input 0 with
   Sum.inl ("expected: " ++ String.intercalate "or " msg)
 
 end Parser
+
+namespace ByteParser.utf8
+  def isHelpful (x : UInt8) : Bool := x.shiftr 6 = 0b10
+
+  def isFirst (x : UInt8) : Bool := x.shiftr 7 = 0
+  def isSecond (x : UInt8) : Bool := x.shiftr 5 = 0b110
+  def isThird (x : UInt8) : Bool := x.shiftr 4 = 0b1110
+  def isFourth (x : UInt8) : Bool := x.shiftr 3 = 0b11110
+
+  def parseValidChar (x : UInt32) : ByteParser Char :=
+    if h : isValidChar x then pure (Char.mk x h)
+    else Parser.fail "invalid character"
+
+  def readFirst : ByteParser Char := Parser.decorateError "<1>" $ do
+    a ← Parser.byte; guard (isFirst a); parseValidChar a.toUInt32
+
+  def readSecond : ByteParser Char := Parser.decorateError "<2>" $ do
+    a ← Parser.byte; b ← Parser.byte;
+    guard (isSecond a); guard (isHelpful b);
+    parseValidChar $ (a.toUInt32.land 0b00011111).shiftl 6 +
+                      b.toUInt32.land 0b00111111
+
+  def readThird : ByteParser Char := Parser.decorateError "<3>" $ do
+    a ← Parser.byte; b ← Parser.byte; c ← Parser.byte;
+    guard (isThird a); guard (isHelpful b); guard (isHelpful c);
+    parseValidChar $ (a.toUInt32.land 0b00001111).shiftl 12 +
+                     (b.toUInt32.land 0b00111111).shiftl 6 +
+                      c.toUInt32.land 0b00111111 
+
+  def readFourth : ByteParser Char := Parser.decorateError "<4>" $ do
+    a ← Parser.byte; b ← Parser.byte; c ← Parser.byte; d ← Parser.byte;
+    guard (isFourth a); guard (isHelpful b);
+    guard (isHelpful c); guard (isHelpful d);
+    parseValidChar $ (a.toUInt32.land 0b00000111).shiftl 18 +
+                     (b.toUInt32.land 0b00111111).shiftl 12 +
+                     (c.toUInt32.land 0b00111111).shiftl 6 +
+                      d.toUInt32.land 0b00111111
+
+  def uchr : ByteParser Char := readFirst <|> readSecond <|> readThird <|> readFourth
+  def string : ByteParser String := String.mk <$> Parser.many uchr
+
+end ByteParser.utf8
+

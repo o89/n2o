@@ -44,9 +44,8 @@ structure Date :=
 def Char.isAscii (c : Char) : Bool :=
 c.val ≤ 127
 
-def ByteString := String
-instance ByteString.HasToString : HasToString ByteString :=
-⟨λ s ⇒ String.intercalate ", " $ (toString ∘ Char.toNat) <$> s.toList⟩
+def String.printBytes (s : String) : String :=
+String.intercalate ", " $ (toString ∘ Char.toNat) <$> s.toList
 
 def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List α → m (List β)
 | [] ⇒ pure []
@@ -64,7 +63,7 @@ inductive Term
 -- | float : Float → Term
 | atom : String → Term
 | tuple : List Term → Term
-| bytelist : ByteString → Term
+| string : String → Term
 | list : List Term → Term
 | binary : ByteArray → Term
 | bigint : Int → Term
@@ -86,7 +85,7 @@ Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
 | CompTerm.dictionary kvs ⇒
   ct "dict" [ Term.list $ (λ t ⇒ Term.tuple [Prod.fst t, Prod.snd t]) <$> kvs ]
 | CompTerm.regex s os ⇒
-  ct "regex" [ Term.bytelist s,
+  ct "regex" [ Term.string s,
                Term.tuple [ Term.list (Term.atom <$> os) ] ]
 
 partial def Term.toString : Term → String
@@ -97,7 +96,7 @@ partial def Term.toString : Term → String
   if x.isLower then s
   else "'" ++ s ++ "'"
 | Term.tuple ts ⇒ "{" ++ String.intercalate ", " (Term.toString <$> ts) ++ "}"
-| Term.bytelist s ⇒ "[" ++ toString s ++ "]"
+| Term.string s ⇒ "[" ++ s.printBytes ++ "]"
 | Term.list ts ⇒ "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
 | Term.binary s ⇒ "<<" ++ String.intercalate ", " (toString <$> s.toList) ++ ">>"
 | Term.bigint x ⇒ toString x
@@ -130,17 +129,11 @@ instance Integer.BERT : BERT Int :=
     | _ ⇒ Sum.inl "invalid integer type" }
 
 instance String.BERT : BERT String :=
-{ toTerm := Term.bytelist,
+{ toTerm := Term.string,
   fromTerm := λ t ⇒ match t with
-    | Term.bytelist x ⇒ Sum.inr x
+    | Term.string x ⇒ Sum.inr x
     | Term.atom x ⇒ Sum.inr x
     | _ ⇒ Sum.inl "invalid string type" }
-
-instance ByteString.BERT : BERT ByteString :=
-{ toTerm := Term.bytelist,
-  fromTerm := λ t ⇒ match t with
-    | Term.bytelist x ⇒ Sum.inr x
-    | _ ⇒ Sum.inl "invalid bytestring type" }
 
 instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
 { toTerm := λ xs ⇒ Term.list (BERT.toTerm <$> xs),
@@ -266,16 +259,13 @@ def writeBigint (x : Int) : Put :=
 
 def writeAtom (x : String) : Put :=
   if x.length < uint8Sz then
-    Put.byte 115 >> Put.byte x.length >> Put.tell x.bytes
+    Put.byte 119 >> Put.byte x.length >> Put.unicode x
   else if x.length < uint16Sz then
-    Put.byte 100 >> Put.word x.length >> Put.tell x.bytes
+    Put.byte 118 >> Put.word x.length >> Put.unicode x
   else Put.fail "BERT atom too long (≥ 65536)"
-
-def writeBytelist (x : ByteString) : Put :=
-  if x.length < uint16Sz then
-    if x.all Char.isAscii then
-      Put.byte 107 >> Put.word x.length >> Put.tell x.bytes
-    else Put.fail "BERT bytelist isn’t ASCII"
+  
+def writeString (x : String) : Put :=
+  if x.length < uint16Sz then Put.byte 107 >> Put.unicode x
   else Put.fail "BERT bytelist too long (≥ 65536)"
 
 partial def writeTerm' : Term → Put
@@ -299,7 +289,7 @@ partial def writeTerm' : Term → Put
     Put.byte 109 >> Put.dword x.size >> Put.tell x
   else Put.fail "BERT binary long (≥ 4294967296)"
 | Term.bigint x ⇒ writeBigint x
-| Term.bytelist s ⇒ writeBytelist s
+| Term.string s ⇒ writeString s
 
 def writeTerm (x : Term) : Sum String ByteArray :=
 Put.run (Put.byte 131 >> writeTerm' x)
