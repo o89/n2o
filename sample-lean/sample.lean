@@ -21,7 +21,3 @@ def router (cx : Cx echoProto) : Cx echoProto :=
 
 def handler : Handler := mkHandler echoProto [ router ]
 def main := startServer handler ("localhost", 9000)
-
-
-
-
