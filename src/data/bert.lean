@@ -169,28 +169,43 @@ def dword : ByteParser UInt32 := do
     pure (a' + b' + c' + d')
 
 -- decode
-def readByte : ByteParser Term := do
-  Parser.tok 97; val ← Parser.byte;
-  pure (Term.byte val)
+def readByte : ByteParser Term :=
+do Parser.tok 97; val ← Parser.byte; pure (Term.byte val)
 
-def readDword : ByteParser Term := do
-  Parser.tok 98; res ← dword;
-  pure (Term.int res)
+def readDword : ByteParser Term :=
+do Parser.tok 98; res ← dword; pure (Term.int res)
 
-def readAtom : ByteParser Term := do
-  Parser.tok 100; N ← word;
-  chars ← Parser.count ByteParser.ch N.toNat;
-  pure (Term.atom chars.toList.asString)
+def readASCIIString {α : Type} (p : ByteParser α)
+  (toNat : α → Nat) (tok : UInt8) : ByteParser String := do
+  Parser.tok tok; N ← p;
+  chars ← Parser.count ByteParser.ch (toNat N);
+  pure chars.toList.asString
 
-def readSmallAtom : ByteParser Term := do
-  Parser.tok 115; N ← Parser.byte;
-  chars ← Parser.count ByteParser.ch N.toNat;
-  pure (Term.atom chars.toList.asString)
+def readAtom : ByteParser Term :=
+Parser.decorateError "<atom>"
+  (Term.atom <$> readASCIIString word UInt16.toNat 100)
 
-def readBytelist : ByteParser Term := do
-  Parser.tok 107; N ← word;
-  chars ← Parser.count ByteParser.ch N.toNat;
-  pure (Term.atom chars.toList.asString)
+def readSmallAtom : ByteParser Term :=
+Parser.decorateError "<small atom>"
+  (Term.atom <$> readASCIIString Parser.byte UInt8.toNat 115)
+
+def readUTF8String {α : Type} (p : ByteParser α)
+  (toNat : α → Nat) (tok : UInt8) : ByteParser String := do
+  Parser.tok tok; N ← p;
+  rem ← Parser.remaining; guard (rem = toNat N);
+  ByteParser.utf8.string
+
+def readUTF8Atom : ByteParser Term :=
+Parser.decorateError "<UTF-8 atom>"
+  (Term.atom <$> readUTF8String word UInt16.toNat 118)
+
+def readUTF8SmallAtom : ByteParser Term :=
+Parser.decorateError "<UTF-8 small atom>"
+  (Term.atom <$> readUTF8String Parser.byte UInt8.toNat 119)
+
+def readString : ByteParser Term :=
+Parser.decorateError "<UTF-8 string>"
+  (Term.string <$> readUTF8String word UInt16.toNat 107)
 
 def readTuple (readTerm : ByteParser Term) : ByteParser Term := do
   Parser.tok 104; N ← Parser.byte;
@@ -234,9 +249,10 @@ def readLargeBignum := readBignum' dword UInt32.toNat 111
 
 def readTerm' (readTerm : ByteParser Term) : ByteParser Term :=
 readByte <|> readDword <|> readAtom <|>
+readUTF8SmallAtom <|> readUTF8Atom <|>
 readTuple readTerm <|> readLargeTuple readTerm <|>
 readList readTerm <|> readBinary <|> readSmallAtom <|>
-readSmallBignum <|> readLargeBignum <|> readBytelist
+readSmallBignum <|> readLargeBignum <|> readString
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
 
