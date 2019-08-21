@@ -173,6 +173,7 @@ namespace ByteParser.utf8
 
   def uchr : ByteParser Char := readFirst <|> readSecond <|> readThird <|> readFourth
   def string : ByteParser String := String.mk <$> Parser.many uchr
-
+  def stringWithLength (s : Nat) : ByteParser String :=
+  (String.mk ∘ Vector.toList) <$> Parser.count uchr s
 end ByteParser.utf8
 

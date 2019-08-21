@@ -190,10 +190,8 @@ Parser.decorateError "<small atom>"
   (Term.atom <$> readASCIIString Parser.byte UInt8.toNat 115)
 
 def readUTF8String {α : Type} (p : ByteParser α)
-  (toNat : α → Nat) (tok : UInt8) : ByteParser String := do
-  Parser.tok tok; N ← p;
-  rem ← Parser.remaining; guard (rem = toNat N);
-  ByteParser.utf8.string
+  (toNat : α → Nat) (tok : UInt8) : ByteParser String :=
+do Parser.tok tok; N ← p; ByteParser.utf8.stringWithLength (toNat N)
 
 def readUTF8Atom : ByteParser Term :=
 Parser.decorateError "<UTF-8 atom>"
