@@ -1,45 +1,7 @@
 import data.bytes data.sum data.put data.parser
 
-inductive DayOfWeek
-| monday   | tuesday | wednesday
-| thursday | friday
-| saturday | sunday
-
-def DayOfWeek.toNat (dow : DayOfWeek) : UInt32 :=
-DayOfWeek.casesOn dow 1 2 3 4 5 6 7
-
-inductive Month
-| jan | feb | mar
-| apr | may | jun
-| jul | aug | sep
-| oct | nov | dec
-
-def Month.toNat (m : Month) : Nat :=
-Month.casesOn m 1 2 3 4 5 6 7 8 9 10 11 12
-
-instance Month.HasToString : HasToString Month :=
-⟨λ m ⇒ Month.casesOn m
-  "January" "February" "March"
-  "April" "May" "June"
-  "July" "August" "September"
-  "October" "November" "December"⟩
-
-instance Month.HasRepr : HasRepr Month :=
-⟨λ m ⇒ Month.casesOn m
-  "jan" "feb" "mar"
-  "apr" "may" "jun"
-  "jul" "aug" "sep"
-  "oct" "nov" "dec"⟩
-
--- TODO: UTCTime
-structure Date :=
-(year : Nat)
-(month : Month)
-(day : Nat)
-(hour : Nat)
-(minute : Nat)
-(seconds : Nat)
-(nanoseconds : Nat)
+structure Time :=
+(Ms s μs : UInt32)
 
 def Char.isAscii (c : Char) : Bool :=
 c.val ≤ 127
@@ -53,6 +15,8 @@ def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List �
   ys ← mapM xs;
   y ← f x;
   pure (y :: ys)
+
+def Dict (α β : Type) := List (α × β)
 
 namespace data.bert
 
@@ -72,7 +36,7 @@ inductive CompTerm
 | nil : CompTerm
 | bool : Bool → CompTerm
 | dictionary : List (Term × Term) → CompTerm
--- | time : UTCTime → CompTerm
+| time : Time → CompTerm
 | regex : String → List String → CompTerm
 
 def ct (b : String) (rest : List Term) : Term :=
@@ -84,6 +48,8 @@ Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
 | CompTerm.bool false ⇒ ct "false" []
 | CompTerm.dictionary kvs ⇒
   ct "dict" [ Term.list $ (λ t ⇒ Term.tuple [Prod.fst t, Prod.snd t]) <$> kvs ]
+| CompTerm.time time ⇒
+  ct "time" [ Term.int time.Ms, Term.int time.s, Term.int time.μs ]
 | CompTerm.regex s os ⇒
   ct "regex" [ Term.string s,
                Term.tuple [ Term.list (Term.atom <$> os) ] ]
@@ -149,6 +115,14 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
       y ← BERT.fromTerm b;
       pure (x, y)
     | _ ⇒ Sum.inl "invalid tuple type" }
+
+instance UTCTime.BERT : BERT Time :=
+{ toTerm := compose ∘ CompTerm.time,
+  fromTerm := λ t ⇒ match t with
+    | Term.tuple [ Term.atom "bert", Term.atom "time",
+                   Term.int Ms, Term.int s, Term.int μs ] ⇒
+      pure ⟨Ms, s, μs⟩
+    | _ ⇒ Sum.inl "invalid UTCTime type" }
 
 def word : ByteParser UInt16 := do
   res ← Parser.count Parser.byte 2;
