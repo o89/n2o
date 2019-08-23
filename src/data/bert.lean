@@ -16,7 +16,7 @@ def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List �
   y ← f x;
   pure (y :: ys)
 
-def Dict (α β : Type) := List (α × β)
+abbrev Dict (α β : Type) := List (α × β)
 
 namespace data.bert
 
@@ -31,11 +31,11 @@ inductive Term
 | list : List Term → Term
 | binary : ByteArray → Term
 | bigint : Int → Term
+| dict : List (Term × Term) → Term
 
 inductive CompTerm
 | nil : CompTerm
 | bool : Bool → CompTerm
-| dictionary : List (Term × Term) → CompTerm
 | time : Time → CompTerm
 | regex : String → List String → CompTerm
 
@@ -46,8 +46,6 @@ Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
 | CompTerm.nil ⇒ Term.list []
 | CompTerm.bool true ⇒ ct "true" []
 | CompTerm.bool false ⇒ ct "false" []
-| CompTerm.dictionary kvs ⇒
-  ct "dict" [ Term.list $ (λ t ⇒ Term.tuple [Prod.fst t, Prod.snd t]) <$> kvs ]
 | CompTerm.time time ⇒
   ct "time" [ Term.int time.Ms, Term.int time.s, Term.int time.μs ]
 | CompTerm.regex s os ⇒
@@ -62,10 +60,14 @@ partial def Term.toString : Term → String
   if x.isLower then s
   else "'" ++ s ++ "'"
 | Term.tuple ts ⇒ "{" ++ String.intercalate ", " (Term.toString <$> ts) ++ "}"
-| Term.string s ⇒ "[" ++ s.printBytes ++ "]"
+| Term.string s ⇒ "\"" ++ s ++ "\""
 | Term.list ts ⇒ "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
 | Term.binary s ⇒ "<<" ++ String.intercalate ", " (toString <$> s.toList) ++ ">>"
 | Term.bigint x ⇒ toString x
+| Term.dict x ⇒
+  let printPair := λ (pair : Term × Term) ⇒
+    "{" ++ Term.toString pair.1 ++ ", " ++ Term.toString pair.2 ++ "}";
+  "[" ++ String.intercalate ", " (printPair <$> x) ++ "]"
 instance : HasToString Term := ⟨Term.toString⟩
 
 class BERT (α : Type) :=
@@ -106,6 +108,15 @@ instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
   fromTerm := λ t ⇒ match t with
     | Term.list xs ⇒ mapM BERT.fromTerm xs
     | _ ⇒ Sum.inl "invalid list type" }
+
+instance Dict.BERT {α β : Type} [BERT α] [BERT β] : BERT (Dict α β) :=
+{ toTerm := λ xs ⇒ Term.dict (Prod.map BERT.toTerm BERT.toTerm <$> xs),
+  fromTerm :=
+    let termFromPair (pair : Term × Term) : Sum String (α × β) :=
+    (do fst ← BERT.fromTerm pair.1; snd ← BERT.fromTerm pair.2; pure (fst, snd));
+    λ t ⇒ match t with
+    | Term.dict xs ⇒ mapM termFromPair xs
+    | _ ⇒ Sum.inl "invalid dict type" }
 
 instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
 { toTerm := λ x ⇒ Term.tuple [ BERT.toTerm x.1, BERT.toTerm x.2 ],
@@ -219,12 +230,18 @@ def readBignum' {α : Type}
 def readSmallBignum := readBignum' Parser.byte UInt8.toNat 110
 def readLargeBignum := readBignum' dword UInt32.toNat 111
 
+def readDict (readTerm : ByteParser Term) : ByteParser Term := do
+  Parser.tok 116; L ← dword;
+  pairs ← Parser.count (Prod.mk <$> readTerm <*> readTerm) L.toNat;
+  pure (Term.dict pairs.toList)
+
 def readTerm' (readTerm : ByteParser Term) : ByteParser Term :=
 readByte <|> readDword <|> readAtom <|>
 readUTF8SmallAtom <|> readUTF8Atom <|>
 readTuple readTerm <|> readLargeTuple readTerm <|>
 readList readTerm <|> readBinary <|> readSmallAtom <|>
-readSmallBignum <|> readLargeBignum <|> readString
+readSmallBignum <|> readLargeBignum <|> readString <|>
+readDict readTerm
 
 def readTerm := do Parser.tok 131; Parser.fix readTerm'
 
@@ -276,9 +293,16 @@ partial def writeTerm' : Term → Put
 | Term.binary x ⇒
   if x.size < uint32Sz then
     Put.byte 109 >> Put.dword x.size >> Put.tell x
-  else Put.fail "BERT binary long (≥ 4294967296)"
+  else Put.fail "BERT binary too long (≥ 4294967296)"
 | Term.bigint x ⇒ writeBigint x
 | Term.string s ⇒ writeString s
+| Term.dict x ⇒
+  let writePair :=
+  λ (x : Term × Term) ⇒ writeTerm' x.1 >> writeTerm' x.2;
+  if x.length < uint32Sz then
+    Put.byte 116 >> Put.dword x.length >>
+    List.foldr (andthen ∘ writePair) Put.nope x
+  else Put.fail "BERT dictionary too long (≥ 4294967296)"
 
 def writeTerm (x : Term) : Sum String ByteArray :=
 Put.run (Put.byte 131 >> writeTerm' x)

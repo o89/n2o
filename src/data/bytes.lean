@@ -28,7 +28,7 @@ def List.iotaZero : Nat → List Nat
 | n + 1 ⇒ (n + 1) :: List.iotaZero n
 
 def UInt16.toBytes (x : UInt16) : ByteArray :=
-List.toByteArray $ UInt16.nthByte x <$> List.iotaZero 3
+List.toByteArray $ UInt16.nthByte x <$> List.iotaZero 1
 
 def UInt32.toBytes (x : UInt32) : ByteArray :=
 List.toByteArray $ UInt32.nthByte x <$> List.iotaZero 3
