@@ -1,13 +1,7 @@
 import data.bytes data.sum data.put data.parser
 
-structure Time :=
-(Ms s μs : UInt32)
-
 def Char.isAscii (c : Char) : Bool :=
 c.val ≤ 127
-
-def String.printBytes (s : String) : String :=
-String.intercalate ", " $ (toString ∘ Char.toNat) <$> s.toList
 
 def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List α → m (List β)
 | [] ⇒ pure []
@@ -32,25 +26,6 @@ inductive Term
 | binary : ByteArray → Term
 | bigint : Int → Term
 | dict : List (Term × Term) → Term
-
-inductive CompTerm
-| nil : CompTerm
-| bool : Bool → CompTerm
-| time : Time → CompTerm
-| regex : String → List String → CompTerm
-
-def ct (b : String) (rest : List Term) : Term :=
-Term.tuple $ [ Term.atom "bert", Term.atom b ] ++ rest
-
-@[matchPattern] def compose : CompTerm → Term
-| CompTerm.nil ⇒ Term.list []
-| CompTerm.bool true ⇒ ct "true" []
-| CompTerm.bool false ⇒ ct "false" []
-| CompTerm.time time ⇒
-  ct "time" [ Term.int time.Ms, Term.int time.s, Term.int time.μs ]
-| CompTerm.regex s os ⇒
-  ct "regex" [ Term.string s,
-               Term.tuple [ Term.list (Term.atom <$> os) ] ]
 
 partial def Term.toString : Term → String
 | Term.byte x ⇒ toString x
@@ -82,13 +57,6 @@ instance Int.BERT : BERT UInt32 :=
   fromTerm := λ t ⇒ match t with
     | Term.int val ⇒ Sum.inr val
     | _ ⇒ Sum.inl "invalid integer type" }
-
-instance Bool.BERT : BERT Bool :=
-{ toTerm := compose ∘ CompTerm.bool,
-  fromTerm := λ t ⇒ match t with
-    | compose (CompTerm.bool true) ⇒ Sum.inr true
-    | compose (CompTerm.bool false) ⇒ Sum.inr false
-    | _ ⇒ Sum.inl "invalid bool type" }
 
 instance Integer.BERT : BERT Int :=
 { toTerm := Term.bigint,
@@ -126,14 +94,6 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
       y ← BERT.fromTerm b;
       pure (x, y)
     | _ ⇒ Sum.inl "invalid tuple type" }
-
-instance UTCTime.BERT : BERT Time :=
-{ toTerm := compose ∘ CompTerm.time,
-  fromTerm := λ t ⇒ match t with
-    | Term.tuple [ Term.atom "bert", Term.atom "time",
-                   Term.int Ms, Term.int s, Term.int μs ] ⇒
-      pure ⟨Ms, s, μs⟩
-    | _ ⇒ Sum.inl "invalid UTCTime type" }
 
 def word : ByteParser UInt16 := do
   res ← Parser.count Parser.byte 2;
