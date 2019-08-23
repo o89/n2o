@@ -30,7 +30,9 @@ UNIX-like OS:
     ```shell
     $ git clone https://github.com/o89/n2o/
     $ cd n2o
-    $ LEAN_DIR=/path/to/lean4 make
+    $ export LEAN_DIR=/path/to/lean4
+    $ make
+    $ make sample
     ```
 
 ## Run
