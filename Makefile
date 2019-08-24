@@ -34,17 +34,19 @@ $(addsuffix .cpp,$(LEAN)): %.cpp: %.olean
 $(addsuffix .olean,$(LEAN)): %.olean: %.lean
 	$(LEAN_DIR)/bin/lean --make $<
 
+clean:
+	rm -f $(addsuffix .cpp,$(LEAN)) $(addsuffix .olean,$(LEAN))
+	rm -f $(addsuffix .o,$(CPP) $(LEAN))
+	rm -f $(SAMPLE) $(SAMPLE).cpp $(SAMPLE).olean $(LIBNAME)
+
+# Build sample
+
 $(SAMPLE): $(LIBNAME)
 	$(call lean-compile,$(SAMPLE))
 	$(call lean-olean,$(SAMPLE))
 	$(LEAN_DIR)/bin/leanc $(FLAGS) $(SAMPLE).cpp $(LIBNAME) $(LIBS) -o $(SAMPLE)
 
 sample: $(SAMPLE)
-
-clean:
-	rm -f $(addsuffix .cpp,$(LEAN)) $(addsuffix .olean,$(LEAN))
-	rm -f $(addsuffix .o,$(CPP) $(LEAN))
-	rm -f $(SAMPLE) $(SAMPLE).cpp $(SAMPLE).olean $(LIBNAME)
 
 run: $(SAMPLE)
 	./$(SAMPLE)
