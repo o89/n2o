@@ -1,3 +1,7 @@
 *.olean
 *.o
 *.a
+*.cpp
+!src/network/n2o/web/callback.cpp
+!src/network/n2o/web/server.cpp
+sample-lean/sample
