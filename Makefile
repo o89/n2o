@@ -12,11 +12,6 @@ LIBS = -lwebsockets
 
 SAMPLE = sample-lean/sample
 
-define g++-obj
-$(LEAN_DIR)/bin/leanc -c $(1).cpp $(FLAGS) -o $(1).o
-
-endef
-
 define lean-olean
 $(LEAN_DIR)/bin/lean --make $(1).lean
 
@@ -27,23 +22,29 @@ $(LEAN_DIR)/bin/lean -c $(1).cpp $(1).lean
 
 endef
 
-all: olean
-	$(foreach file,$(LEAN),$(call lean-compile,$(file)))
-	$(foreach file,$(CPP) $(LEAN),$(call g++-obj,$(file)))
+$(LIBNAME): $(addsuffix .olean,$(LEAN)) $(addsuffix .cpp,$(LEAN)) $(addsuffix .o,$(LEAN) $(CPP))
 	ar rvs $(LIBNAME) $(addsuffix .o,$(CPP) $(LEAN))
 
-olean:
-	$(foreach file,$(LEAN),$(call lean-olean,$(file)))
+%.o: %.cpp
+	$(LEAN_DIR)/bin/leanc $(FLAGS) -c $< -o $@
+
+$(addsuffix .cpp,$(LEAN)): %.cpp: %.lean
+	$(LEAN_DIR)/bin/lean -c $@ $<
+
+$(addsuffix .olean,$(LEAN)): %.olean: %.lean
+	$(LEAN_DIR)/bin/lean --make $<
+
+$(SAMPLE): $(LIBNAME)
+	$(call lean-compile,$(SAMPLE))
+	$(call lean-olean,$(SAMPLE))
+	$(LEAN_DIR)/bin/leanc $(FLAGS) $(SAMPLE).cpp $(LIBNAME) $(LIBS) -o $(SAMPLE)
+
+sample: $(SAMPLE)
 
 clean:
 	rm -f $(addsuffix .cpp,$(LEAN)) $(addsuffix .olean,$(LEAN))
 	rm -f $(addsuffix .o,$(CPP) $(LEAN))
 	rm -f $(SAMPLE) $(SAMPLE).cpp $(SAMPLE).olean $(LIBNAME)
-
-sample:
-	$(call lean-compile,$(SAMPLE))
-	$(call lean-olean,$(SAMPLE))
-	$(LEAN_DIR)/bin/leanc $(FLAGS) $(SAMPLE).cpp $(LIBNAME) $(LIBS) -o $(SAMPLE)
 
 run:
 	./$(SAMPLE)
