@@ -22,14 +22,14 @@ $(LEAN_DIR)/bin/lean -c $(1).cpp $(1).lean
 
 endef
 
-$(LIBNAME): $(addsuffix .olean,$(LEAN)) $(addsuffix .cpp,$(LEAN)) $(addsuffix .o,$(LEAN) $(CPP))
+$(LIBNAME): $(addsuffix .o,$(LEAN) $(CPP))
 	ar rvs $(LIBNAME) $(addsuffix .o,$(CPP) $(LEAN))
 
 %.o: %.cpp
 	$(LEAN_DIR)/bin/leanc $(FLAGS) -c $< -o $@
 
-$(addsuffix .cpp,$(LEAN)): %.cpp: %.lean
-	$(LEAN_DIR)/bin/lean -c $@ $<
+$(addsuffix .cpp,$(LEAN)): %.cpp: %.olean
+	$(LEAN_DIR)/bin/lean -c $@ $(<:.olean=.lean)
 
 $(addsuffix .olean,$(LEAN)): %.olean: %.lean
 	$(LEAN_DIR)/bin/lean --make $<
@@ -46,5 +46,5 @@ clean:
 	rm -f $(addsuffix .o,$(CPP) $(LEAN))
 	rm -f $(SAMPLE) $(SAMPLE).cpp $(SAMPLE).olean $(LIBNAME)
 
-run:
+run: $(SAMPLE)
 	./$(SAMPLE)
