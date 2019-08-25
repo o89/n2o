@@ -46,16 +46,12 @@ void read_headers(struct lws* wsi, n2o_userdata* user) {
 void send_msg(struct lws* wsi, n2o_userdata* user) {
     if (!user->pool->empty()) {
         auto str = user->pool->front();
-
-        auto length = strlen(str.msg);
-        if (str.kind == Text) length++; // leading zero
-
         user->pool->pop();
 
-        auto buff = (char*) malloc(LWS_PRE + length);
-        memcpy(&buff[LWS_PRE], str.msg, length); free(str.msg);
+        auto buff = (char*) malloc(LWS_PRE + str.length);
+        memcpy(&buff[LWS_PRE], str.msg, str.length); free(str.msg);
 
-        lws_write(wsi, (unsigned char*) &buff[LWS_PRE], length,
+        lws_write(wsi, (unsigned char*) &buff[LWS_PRE], str.length,
                   (str.kind == Text) ? LWS_WRITE_TEXT : LWS_WRITE_BINARY);
         free(buff);
     }
@@ -93,10 +89,11 @@ void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
         if (lean::obj_tag(reply) == 0) {
             // free(msg); calls `send_msg` or callback on close
             auto text = lean::cnstr_get(reply, 0);
-            auto msg = (char*) malloc(lean::string_len(text) + 1);
+            auto length = lean::string_len(text) + 1;
+            auto msg = (char*) malloc(length);
             strcpy(msg, lean::string_cstr(text));
 
-            user->pool->push({ Text, msg });
+            user->pool->push({ Text, length, msg });
             lws_callback_on_writable(wsi);
         } else {
             auto arr = lean::cnstr_get(reply, 0);
@@ -107,7 +104,7 @@ void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
               msg[i] = lean::sarray_get<lean::uint8>(arr, i);
             msg[size] = '\0';
 
-            user->pool->push({ Binary, msg });
+            user->pool->push({ Binary, size, msg });
             lws_callback_on_writable(wsi);
         }
     }

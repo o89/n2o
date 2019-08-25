@@ -10,6 +10,7 @@ typedef lean::object obj;
 enum MsgKind { Text, Binary };
 struct Msg {
     enum MsgKind kind;
+    size_t length;
     char* msg;
 };
 
