@@ -89,7 +89,7 @@ void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
         if (lean::obj_tag(reply) == 0) {
             // free(msg); calls `send_msg` or callback on close
             auto text = lean::cnstr_get(reply, 0);
-            auto length = lean::string_len(text) + 1;
+            auto length = lean::string_size(text);
             auto msg = (char*) malloc(length);
             strcpy(msg, lean::string_cstr(text));
 
