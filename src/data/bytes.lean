@@ -1,16 +1,16 @@
-@[extern cpp inline "#1 << #2"]
+@[extern c inline "#1 << #2"]
 constant UInt8.shiftl (a b : UInt8) : UInt8 := UInt8.ofNat (default _)
-@[extern cpp inline "#1 >> #2"]
+@[extern c inline "#1 >> #2"]
 constant UInt8.shiftr (a b : UInt8) : UInt8 := UInt8.ofNat (default _)
 
-@[extern cpp inline "#1 << #2"]
+@[extern c inline "#1 << #2"]
 constant UInt16.shiftl (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
-@[extern cpp inline "#1 >> #2"]
+@[extern c inline "#1 >> #2"]
 constant UInt16.shiftr (a b : UInt16) : UInt16 := UInt16.ofNat (default _)
 
-@[extern cpp inline "#1 << #2"]
+@[extern c inline "#1 << #2"]
 constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
-@[extern cpp inline "#1 >> #2"]
+@[extern c inline "#1 >> #2"]
 constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (default _)
 
 def UInt8.toUInt32 (x : UInt8) : UInt32 := UInt32.ofNat x.toNat

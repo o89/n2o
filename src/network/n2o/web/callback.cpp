@@ -101,7 +101,7 @@ void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
 
             auto msg = (char*) malloc(size);
             for (size_t i = 0; i < size; i++)
-              msg[i] = lean::sarray_get<lean::uint8>(arr, i);
+              msg[i] = lean::byte_array_get(arr, lean::box(i));
 
             user->pool->push({ Binary, size, msg });
             lws_callback_on_writable(wsi);
