@@ -62,9 +62,29 @@ static int callback_n2o(struct lws *wsi,
     return 0;
 }
 
+static int callback(struct lws *wsi,
+                    enum lws_callback_reasons reason,
+                    void *user, void *in, size_t len) {
+    auto userdata = (n2o_userdata*) user;
+    if (!userdata) return 0; // ???
+
+    if (reason == LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION) {
+        auto length = lws_hdr_total_length(wsi, WSI_TOKEN_UPGRADE);
+        auto upgrade = (char*) malloc(length + 1);
+        lws_hdr_copy(wsi, upgrade, length + 1, WSI_TOKEN_UPGRADE);
+        upgrade[length] = (char) 0;
+        userdata->method = strcmp(upgrade, "websocket") ?
+            ConnectionType::Http : ConnectionType::Wss;
+        free(upgrade);
+    }
+
+    return (userdata->method == ConnectionType::Wss) ?
+        callback_n2o(wsi, reason, user, in, len) :
+        lws_callback_http_dummy(wsi, reason, user, in, len);
+}
+
 static struct lws_protocols protocols[] = {
-    { "http", lws_callback_http_dummy, 0 },
-    { "n2o", callback_n2o, sizeof(n2o_userdata) },
+    { "", callback, sizeof(n2o_userdata) },
     { NULL, NULL, 0 }
 };
 

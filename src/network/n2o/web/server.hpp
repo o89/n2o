@@ -14,7 +14,10 @@ struct Msg {
     char* msg;
 };
 
+enum ConnectionType { Http, Wss };
+
 struct n2o_userdata {
     obj* headers;
+    ConnectionType method;
     std::queue<Msg>* pool;
 };
