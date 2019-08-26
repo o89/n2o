@@ -38,7 +38,7 @@ UNIX-like OS:
 ## Run
 
 ```shell
-$ wscat -c ws://127.0.0.1/ws/
+$ wscat -c ws://127.0.0.1/
 connected (press CTRL+C to quit)
 > helo
 < helo
