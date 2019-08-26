@@ -62,9 +62,8 @@ obj* read_msg(struct lws* wsi, n2o_userdata* user, char* in, size_t len) {
     if (lws_frame_is_binary(wsi)) {
         msg = lean::alloc_cnstr(1, 1, 0);
 
-        auto buff = lean::mk_empty_byte_array(lean::mk_nat_obj(len));
-        for (size_t i = 0; i < len; i++)
-            buff = lean::byte_array_set(buff, lean::mk_nat_obj(i), in[i]);
+        auto buff = lean::alloc_sarray(sizeof(char), len, len);
+        memcpy(lean_sarray_cptr(buff), in, len);
         lean::cnstr_set(msg, 0, buff);
     } else {
         msg = lean::alloc_cnstr(0, 1, 0);
