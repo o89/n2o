@@ -43,8 +43,11 @@ def Context.run (m : Proto) (cx : Cx m)
   (handlers : List (Cx m → Cx m)) (msg : m.prot) :=
 (handlers.foldl (λ x (f : Cx m → Cx m) ⇒ f x) cx).module (m.proto msg)
 
+def uselessRouter (m : Proto) : m.ev → m.res :=
+λ _ ⇒ m.nothing
+
 def mkHandler (m : Proto) (handlers : List (Cx m → Cx m)) : m.req → m.prot → m.res :=
-λ req msg ⇒ Context.run m ⟨req, λ _ ⇒ m.nothing⟩ handlers msg
+λ req msg ⇒ Context.run m ⟨req, uselessRouter m⟩ handlers msg
 
 structure WS :=
 (question : Msg)
