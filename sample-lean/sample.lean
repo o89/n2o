@@ -1,6 +1,5 @@
 import init.system.io data.bert data.parser
-import network.n2o.web.http network.n2o.internal
-open network.n2o.web.http network.n2o.internal
+import network.n2o
 
 def echoProto : Proto :=
 { prot := Msg,

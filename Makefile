@@ -3,7 +3,7 @@ LEAN_PATH = $(LEAN_DIR)/library:./src:./sample-lean
 export LEAN_PATH
 
 CPP = src/network/n2o/web/callback src/network/n2o/web/server
-LEAN = src/data/bytes src/data/sum src/data/put src/data/vector src/data/parser src/data/bert src/network/n2o/internal src/network/n2o/web/http
+LEAN = src/data/bytes src/data/sum src/data/put src/data/vector src/data/parser src/data/bert src/data/default src/network/n2o/internal src/network/n2o/web/http src/network/n2o/web/default src/network/n2o/default
 FLAGS = -g -Wall
 
 LIBNAME = libn2o.a

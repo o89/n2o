@@ -12,8 +12,6 @@ def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List �
 
 abbrev Dict (α β : Type) := List (α × β)
 
-namespace data.bert
-
 inductive Term
 | byte : UInt8 → Term
 -- there is now no Int32 in Lean
@@ -271,4 +269,3 @@ partial def writeTerm' : Term → Put
 def writeTerm (x : Term) : Sum String ByteArray :=
 Put.run (Put.byte 131 >> writeTerm' x)
 
-end data.bert
