@@ -20,6 +20,7 @@ void read_headers(struct lws* wsi, n2o_userdata* user) {
 
     auto zero = prod(lean::mk_string(""), lean::mk_string(""));
     user->headers = lean::mk_array(lean::mk_nat_obj(count), zero);
+    lean::mark_persistent(user->headers);
     count = 0;
 
     for (int i = 0; i < WSI_TOKEN_COUNT; i++) {
@@ -33,11 +34,9 @@ void read_headers(struct lws* wsi, n2o_userdata* user) {
             lws_hdr_copy(wsi, value, len + 1, token);
             value[len] = '\0';
 
-            user->headers = lean::array_set(
-                user->headers, lean::mk_nat_obj(count),
-                prod(lean::mk_string(name), lean::mk_string(value))
-            ); free(value);
-            lean::mark_persistent(user->headers);
+            lean::array_cptr(user->headers)[count] =
+                prod(lean::mk_string(name), lean::mk_string(value));
+            free(value);
             count++;
         }
     }

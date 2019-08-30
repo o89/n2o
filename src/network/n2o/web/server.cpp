@@ -29,11 +29,15 @@ static int callback_n2o(struct lws *wsi,
     switch (reason) {
         case LWS_CALLBACK_RECEIVE: {
             auto socket = lean::alloc_cnstr(0, 2, 0);
-
-            lean::cnstr_set(socket, 0, read_msg(wsi, userdata, (char*) in, len));
+            auto msg = read_msg(wsi, userdata, (char*) in, len);
+            lean::cnstr_set(socket, 0, msg);
             lean::cnstr_set(socket, 1, userdata->headers);
 
-            push_msg(wsi, userdata, lean::apply_1(n2o_handler, socket));
+            auto res = lean::apply_1(n2o_handler, socket);
+            push_msg(wsi, userdata, res);
+
+            lean::free_heap_obj(res);
+            lean::free_heap_obj(msg);
             break;
         }
 
@@ -54,6 +58,7 @@ static int callback_n2o(struct lws *wsi,
                 userdata->pool->pop();
             }
             delete userdata->pool;
+            lean::free_heap_obj(userdata->headers);
             break;
         }
 
@@ -121,7 +126,7 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
 
     printf("Started server at %s:%d\n", host, port);
 
-    while (!interrupted) lws_service(context, 1000);
+    while (!interrupted) lws_service(context, 0);
 
     lws_context_destroy(context);
 
