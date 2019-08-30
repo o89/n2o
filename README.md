@@ -25,22 +25,12 @@ UNIX-like OS:
     $ sudo make install
     ```
 
-3. And:
+3. Install [BUMP](https://github.com/o89/bump).
+
+4. And:
 
     ```shell
     $ git clone https://github.com/o89/n2o/
     $ cd n2o
-    $ export LEAN_DIR=/path/to/lean4
-    $ make
-    $ make sample
+    $ bump compile
     ```
-
-## Run
-
-```shell
-$ wscat -c ws://127.0.0.1/
-connected (press CTRL+C to quit)
-> helo
-< helo
->
-```
