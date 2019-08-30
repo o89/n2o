@@ -20,7 +20,6 @@ void read_headers(struct lws* wsi, n2o_userdata* user) {
 
     auto zero = prod(lean::mk_string(""), lean::mk_string(""));
     user->headers = lean::mk_array(lean::mk_nat_obj(count), zero);
-    lean::mark_persistent(user->headers);
     count = 0;
 
     for (int i = 0; i < WSI_TOKEN_COUNT; i++) {
@@ -40,6 +39,7 @@ void read_headers(struct lws* wsi, n2o_userdata* user) {
             count++;
         }
     }
+    lean::mark_persistent(user->headers);
 }
 
 void send_msg(struct lws* wsi, n2o_userdata* user) {

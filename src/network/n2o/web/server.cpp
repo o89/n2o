@@ -36,8 +36,6 @@ static int callback_n2o(struct lws *wsi,
             auto res = lean::apply_1(n2o_handler, socket);
             push_msg(wsi, userdata, res);
 
-            lean::free_heap_obj(res);
-            lean::free_heap_obj(msg);
             break;
         }
 
