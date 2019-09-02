@@ -25,12 +25,12 @@ UNIX-like OS:
     $ sudo make install
     ```
 
-3. Install [BUMP](https://github.com/o89/bump).
+3. Install [BUM](https://github.com/o89/bum).
 
 4. And:
 
     ```shell
     $ git clone https://github.com/o89/n2o/
     $ cd n2o
-    $ bump compile
+    $ bum compile
     ```
