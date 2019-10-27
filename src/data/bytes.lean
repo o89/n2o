@@ -41,7 +41,7 @@ UInt32.shiftl (UInt32.ofNat x.toNat) y
 
 partial def ByteArray.appendAux : Nat → ByteArray → ByteArray → ByteArray
 | i, dest, res ⇒
-  if i < res.size then ByteArray.appendAux (i + 1) (dest.push $ res.get i) res
+  if i < res.size then ByteArray.appendAux (i + 1) (dest.push $ res.get! i) res
   else dest
 
 def ByteArray.append := ByteArray.appendAux 0

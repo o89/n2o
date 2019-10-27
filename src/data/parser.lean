@@ -1,6 +1,7 @@
 -- data.buffer.parser from Lean 3 stdlib
 
-import data.vector data.bytes
+import data.vector
+import data.bytes
 
 inductive ParseResult (α : Type)
 | done (pos : Nat) (result : α) : ParseResult
@@ -18,7 +19,7 @@ def Parser (Γ π : Type) [BuiltFrom Γ π] (α : Type) :=
 instance : BuiltFrom ByteArray UInt8 :=
 { size := ByteArray.size,
   eq := HasBeq.beq,
-  get := ByteArray.get,
+  get := ByteArray.get!,
   escape := toString }
 
 abbrev ByteParser := Parser ByteArray UInt8
@@ -26,7 +27,7 @@ abbrev ByteParser := Parser ByteArray UInt8
 def ByteParser.ch : ByteParser Char :=
 λ input pos ⇒
   if pos < input.size then
-    let ch := UInt32.ofNat (input.get pos).toNat;
+    let ch := UInt32.ofNat (input.get! pos).toNat;
     if h : isValidChar ch then ParseResult.done (pos + 1) (Char.mk ch h)
     else ParseResult.fail _ pos [ "<valid char>" ]
   else ParseResult.fail _ pos [ "<char>" ]

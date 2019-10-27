@@ -1,4 +1,5 @@
-import data.bytes data.sum
+import data.bytes
+import data.sum
 
 def PutM (α : Type) := α × ByteArray
 

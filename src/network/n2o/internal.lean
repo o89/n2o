@@ -1,4 +1,4 @@
-import init.system.io
+import Init.System.IO
 
 def String.init (s : String) := s.extract 0 (s.length - 1)
 
@@ -67,14 +67,14 @@ def Header.isHeader : String → Bool
 def WS.toReq (socket : WS) : Req :=
 let headersList := socket.headers.toList;
 let headers := List.filterMap Header.dropBack headersList;
-{ path := Option.getOrElse
+{ path := Option.getD
             (headersList.lookup "get " <|>
              headersList.lookup "post " <|>
              headersList.lookup "option ") "",
-  method := Option.getOrElse
+  method := Option.getD
               (String.trimRight <$> Prod.fst <$>
                 headersList.find (Header.isHeader ∘ Prod.fst)) "",
-  version := Option.getOrElse
+  version := Option.getD
                (Prod.snd <$> headersList.find
                  (String.isPrefixOf "http" ∘ Prod.fst)) "",
   headers := headers }
