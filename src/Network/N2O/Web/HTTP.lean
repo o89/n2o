@@ -1,4 +1,4 @@
-import network.n2o.internal
+import Network.N2O.Internal
 
 @[extern 2 "lean_set_handler"] constant setHandler (handler : WS → Result) : IO Unit := default _
 @[extern 1 "lean_stop_server"] constant stopServer : IO Unit := default _

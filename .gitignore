@@ -2,6 +2,5 @@
 *.o
 *.a
 *.cpp
-!src/network/n2o/web/callback.cpp
-!src/network/n2o/web/server.cpp
-sample-lean/sample
+!Src/Network/N2O/Web/Callback.cpp
+!Src/Network/N2O/Web/Server.cpp

@@ -1,7 +1,7 @@
 -- data.buffer.parser from Lean 3 stdlib
 
-import data.vector
-import data.bytes
+import Data.Vector
+import Data.Bytes
 
 inductive ParseResult (α : Type)
 | done (pos : Nat) (result : α) : ParseResult

@@ -1,7 +1,7 @@
-import data.bytes
-import data.sum
-import data.put
-import data.parser
+import Data.Bytes
+import Data.Sum
+import Data.Put
+import Data.Parser
 
 def Char.isAscii (c : Char) : Bool :=
 c.val ≤ 127
