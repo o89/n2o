@@ -1,5 +1,5 @@
-import Data.Bytes
-import Data.Sum
+import N2O.Data.Bytes
+import N2O.Data.Sum
 
 def PutM (α : Type) := α × ByteArray
 
@@ -12,6 +12,9 @@ namespace PutM
 
   def pure {α : Type} (x : α) : PutM α := (x, ByteArray.empty)
 
+  instance : HasPure PutM :=
+  { pure := @pure }
+
   def HasSeq {α β : Type} : PutM (α → β) → PutM α → PutM β
   | (f, w), (x, w') ⇒ (f x, w ++ w')
 
@@ -22,7 +25,7 @@ namespace PutM
   | (a, w), f ⇒ match f a with
   | (b, w') ⇒ (b, w ++ w')
 
-  instance : Monad PutM :=
+  instance : HasBind PutM :=
   { bind := @bind }
 end PutM
 
@@ -30,9 +33,10 @@ inductive Put.Result
 | ok | error : String → Put.Result
 
 abbrev Put := PutM Put.Result
+
 def Put.tell (x : ByteArray) : Put := (Put.Result.ok, x)
 
-def Put.raw (x : UInt8) : Put := Put.tell [ x ].toByteArray
+def Put.raw (x : UInt8) : Put := Put.tell [x].toByteArray
 
 def Put.byte (x : Nat) : Put := Put.raw (UInt8.ofNat x)
 def Put.word (x : Nat) : Put := Put.tell (UInt16.ofNat x).toBytes
@@ -42,10 +46,10 @@ def Put.run : Put → Sum String ByteArray
 | (Put.Result.ok, arr) ⇒ Sum.ok arr
 | (Put.Result.error s, _) ⇒ Sum.fail s
 
-def Put.fail : String → Put := pure ∘ Put.Result.error
-def Put.nope : Put := pure Put.Result.ok
+def Put.fail : String → PutM Put.Result := pure ∘ Put.Result.error
+def Put.nope : PutM Put.Result := pure Put.Result.ok
 
-instance : HasAndthen Put := ⟨λ x y ⇒ do x; y⟩
+instance : HasAndthen (PutM Put.Result) := ⟨λ x y ⇒ do x; y⟩
 instance : Inhabited Put := ⟨Put.fail "unreacheable code was reached"⟩
 
 def Put.uchr (ch : Char) : Put :=
@@ -66,4 +70,4 @@ else if x < 0x110000 then
 else Put.fail "character too big"
 
 def Put.unicode (s : String) : Put :=
-List.foldr (andthen ∘ Put.uchr) Put.nope s.toList
+List.foldr (HasAndthen.andthen ∘ Put.uchr) Put.nope s.toList

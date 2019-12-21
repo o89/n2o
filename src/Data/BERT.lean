@@ -1,7 +1,7 @@
-import Data.Bytes
-import Data.Sum
-import Data.Put
-import Data.Parser
+import N2O.Data.Bytes
+import N2O.Data.Sum
+import N2O.Data.Put
+import N2O.Data.Parser
 
 def Char.isAscii (c : Char) : Bool :=
 c.val ≤ 127
@@ -244,7 +244,7 @@ partial def writeTerm' : Term → Put
 | Term.int x ⇒ Put.byte 98 >> Put.tell x.toBytes
 | Term.atom s ⇒ writeAtom s
 | Term.tuple x ⇒
-  let tuple := List.foldr (andthen ∘ writeTerm') Put.nope;
+  let tuple := List.foldr (HasAndthen.andthen ∘ writeTerm') Put.nope;
   if x.length < uint8Sz then
     Put.byte 104 >> Put.byte x.length >> tuple x
   else if x.length < uint32Sz then
@@ -253,7 +253,7 @@ partial def writeTerm' : Term → Put
 | Term.list x ⇒
   if x.length < uint32Sz then
     Put.byte 108 >> Put.dword x.length >>
-    List.foldr (andthen ∘ writeTerm') (Put.byte 106) x
+    List.foldr (HasAndthen.andthen ∘ writeTerm') (Put.byte 106) x
   else Put.fail "BERT list too long (≥ 4294967296)"
 | Term.binary x ⇒
   if x.size < uint32Sz then
@@ -266,7 +266,7 @@ partial def writeTerm' : Term → Put
   λ (x : Term × Term) ⇒ writeTerm' x.1 >> writeTerm' x.2;
   if x.length < uint32Sz then
     Put.byte 116 >> Put.dword x.length >>
-    List.foldr (andthen ∘ writePair) Put.nope x
+    List.foldr (HasAndthen.andthen ∘ writePair) Put.nope x
   else Put.fail "BERT dictionary too long (≥ 4294967296)"
 
 def writeTerm (x : Term) : Sum String ByteArray :=
