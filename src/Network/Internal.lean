@@ -73,8 +73,8 @@ let headers := List.filterMap Header.dropBack headersList;
              headersList.lookup "option ") "",
   method := Option.getD
               (String.trimRight <$> Prod.fst <$>
-                headersList.find (Header.isHeader ∘ Prod.fst)) "",
+                headersList.find? (Header.isHeader ∘ Prod.fst)) "",
   version := Option.getD
-               (Prod.snd <$> headersList.find
+               (Prod.snd <$> headersList.find?
                  (String.isPrefixOf "http" ∘ Prod.fst)) "",
   headers := headers }
