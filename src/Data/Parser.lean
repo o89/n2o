@@ -1,7 +1,6 @@
 -- data.buffer.parser from Lean 3 stdlib
-
-import N2O.Data.Vector
 import N2O.Data.Bytes
+import N2O.Data.Vector
 
 inductive ParseResult (α : Type)
 | done (pos : Nat) (result : α) : ParseResult
@@ -49,9 +48,6 @@ protected def fail (msg : String) : Parser Γ π α :=
 instance : Monad (Parser Γ π) :=
 { pure := @Parser.pure Γ π _,
   bind := @Parser.bind Γ π _ }
-
-instance : MonadFail (Parser Γ π) :=
-{ fail := @Parser.fail Γ π _ }
 
 protected def failure : Parser Γ π α :=
 λ _ pos ⇒ ParseResult.fail α pos []

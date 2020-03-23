@@ -99,7 +99,7 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
 def word : ByteParser UInt16 := do
   res ← Parser.count Parser.byte 2;
   match res with
-  | a ∷ b ∷ Vector.nil ⇒
+  | (a, b, _) ⇒
     let a' := UInt8.shiftl16 a (8 * 1);
     let b' := UInt8.shiftl16 b (8 * 0);
     pure (a' + b')
@@ -107,7 +107,7 @@ def word : ByteParser UInt16 := do
 def dword : ByteParser UInt32 := do
   res ← Parser.count Parser.byte 4;
   match res with
-  | a ∷ b ∷ c ∷ d ∷ Vector.nil ⇒
+  | (a, b, c, d, _) ⇒
     let a' := UInt8.shiftl32 a (8 * 3);
     let b' := UInt8.shiftl32 b (8 * 2);
     let c' := UInt8.shiftl32 c (8 * 1);

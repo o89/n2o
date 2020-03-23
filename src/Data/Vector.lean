@@ -1,21 +1,20 @@
-inductive Vector (α : Type) : Nat → Type
-| nil {} : Vector 0
-| cons {} : ∀ {n : Nat}, α → Vector n → Vector (n + 1)
-
-infixr ` ∷ `:67 := Vector.cons
+def Vector (α : Type) : Nat → Type
+|   0   ⇒ Unit
+| n + 1 ⇒ α × Vector n
 
 namespace Vector
 
-variables {n : Nat} {α β : Type}
+variables {α : Type} {n : Nat}
 
-def head : Vector α (n + 1) → α
-| x ∷ xs ⇒ x
+def nil : Vector α 0 := Unit.unit
+def cons : α → Vector α n → Vector α (n + 1) :=
+Prod.mk
 
-def tail : Vector α (n + 1) → Vector α n
-| x ∷ xs ⇒ xs
+def head : Vector α (n + 1) → α := Prod.fst
+def tail : Vector α (n + 1) → Vector α n := Prod.snd
 
 def toList : ∀ {n : Nat}, Vector α n → List α
-| 0, Vector.nil ⇒ []
-| n + 1, x ∷ xs ⇒ x :: toList xs
+|   0,   _       ⇒ []
+| n + 1, (x, xs) ⇒ x :: toList xs
 
 end Vector
