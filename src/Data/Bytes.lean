@@ -24,8 +24,8 @@ def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
 (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).crop
 
 def List.iotaZero : Nat → List Nat
-| 0     ⇒ [ 0 ]
-| n + 1 ⇒ (n + 1) :: List.iotaZero n
+| 0     => [ 0 ]
+| n + 1 => (n + 1) :: List.iotaZero n
 
 def UInt16.toBytes (x : UInt16) : ByteArray :=
 List.toByteArray $ UInt16.nthByte x <$> List.iotaZero 1
@@ -40,7 +40,7 @@ def UInt8.shiftl32 (x : UInt8) (y : UInt32) : UInt32 :=
 UInt32.shiftl (UInt32.ofNat x.toNat) y
 
 partial def ByteArray.appendAux : Nat → ByteArray → ByteArray → ByteArray
-| i, dest, res ⇒
+| i, dest, res =>
   if i < res.size then ByteArray.appendAux (i + 1) (dest.push $ res.get! i) res
   else dest
 

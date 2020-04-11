@@ -4,16 +4,16 @@ def String.init (s : String) := s.extract 0 (s.length - 1)
 
 def Header := String × String
 instance Header.HasToString : HasToString Header :=
-⟨fun pair ⇒ pair.fst ++ ": " ++ pair.snd⟩
+⟨fun pair => pair.fst ++ ": " ++ pair.snd⟩
 
 inductive Msg
 | text : String → Msg
 | binary : ByteArray → Msg
 
 instance : HasToString Msg :=
-⟨λ m ⇒ match m with
-  | Msg.text str ⇒ str
-  | Msg.binary lst ⇒ toString lst⟩
+⟨λ m => match m with
+  | Msg.text str => str
+  | Msg.binary lst => toString lst⟩
 
 structure Req :=
 (path : String)
@@ -41,28 +41,28 @@ structure Cx (m : Proto) :=
 
 def Context.run (m : Proto) (cx : Cx m)
   (handlers : List (Cx m → Cx m)) (msg : m.prot) :=
-(handlers.foldl (λ x (f : Cx m → Cx m) ⇒ f x) cx).module (m.proto msg)
+(handlers.foldl (λ x (f : Cx m → Cx m) => f x) cx).module (m.proto msg)
 
 def uselessRouter (m : Proto) : m.ev → m.res :=
-λ _ ⇒ m.nothing
+λ _ => m.nothing
 
 def mkHandler (m : Proto) (handlers : List (Cx m → Cx m)) : m.req → m.prot → m.res :=
-λ req msg ⇒ Context.run m ⟨req, uselessRouter m⟩ handlers msg
+λ req msg => Context.run m ⟨req, uselessRouter m⟩ handlers msg
 
 structure WS :=
 (question : Msg)
 (headers : Array (String × String))
 
 def Header.dropBack : Header → Option Header
-| (name, value) ⇒
+| (name, value) =>
   if name.back = ':' then some (name.init, value)
   else none
 
 def Header.isHeader : String → Bool
-| "get "    ⇒ true
-| "post "   ⇒ true
-| "option " ⇒ true
-| _         ⇒ false
+| "get "    => true
+| "post "   => true
+| "option " => true
+| _         => false
 
 def WS.toReq (socket : WS) : Req :=
 let headersList := socket.headers.toList;

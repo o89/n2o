@@ -5,7 +5,7 @@ def PutM (α : Type) := α × ByteArray
 
 namespace PutM
   def HasMap {α β : Type} (f : α → β) : PutM α → PutM β
-  | (a, w) ⇒ (f a, w)
+  | (a, w) => (f a, w)
 
   instance : Functor PutM := 
   { map := @HasMap }
@@ -16,14 +16,14 @@ namespace PutM
   { pure := @pure }
 
   def HasSeq {α β : Type} : PutM (α → β) → PutM α → PutM β
-  | (f, w), (x, w') ⇒ (f x, w ++ w')
+  | (f, w), (x, w') => (f x, w ++ w')
 
   instance : Applicative PutM :=
   { pure := @pure, seq := @HasSeq }
 
   def bind {α β : Type} : PutM α → (α → PutM β) → PutM β
-  | (a, w), f ⇒ match f a with
-  | (b, w') ⇒ (b, w ++ w')
+  | (a, w), f => match f a with
+  | (b, w') => (b, w ++ w')
 
   instance : HasBind PutM :=
   { bind := @bind }
@@ -43,13 +43,13 @@ def Put.word (x : Nat) : Put := Put.tell (UInt16.ofNat x).toBytes
 def Put.dword (x : Nat) : Put := Put.tell (UInt32.ofNat x).toBytes
 
 def Put.run : Put → Sum String ByteArray
-| (Put.Result.ok, arr) ⇒ Sum.ok arr
-| (Put.Result.error s, _) ⇒ Sum.fail s
+| (Put.Result.ok, arr) => Sum.ok arr
+| (Put.Result.error s, _) => Sum.fail s
 
 def Put.fail : String → PutM Put.Result := pure ∘ Put.Result.error
 def Put.nope : PutM Put.Result := pure Put.Result.ok
 
-instance : HasAndthen (PutM Put.Result) := ⟨λ x y ⇒ do x; y⟩
+instance : HasAndthen (PutM Put.Result) := ⟨λ x y => do x; y⟩
 instance : Inhabited Put := ⟨Put.fail "unreacheable code was reached"⟩
 
 def Put.uchr (ch : Char) : Put :=
