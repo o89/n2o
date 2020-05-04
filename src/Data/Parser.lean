@@ -120,7 +120,8 @@ partial def countLength (p : Parser Γ π (α × Nat)) : Nat → Parser Γ π (L
 | m => do (x, n) ← p; xs ← countLength (m - n); pure (x :: xs)
 
 def tok (b : π) : Parser Γ π Unit :=
-decorateError (BuiltFrom.escape Γ b) $ do sat (BuiltFrom.eq Γ b); eps
+decorateError (BuiltFrom.escape Γ b) $
+  do sat (BuiltFrom.eq Γ b) >>= λ _ => eps
 
 def remaining : Parser Γ π Nat :=
 λ input pos => ParseResult.done pos (BuiltFrom.size π input - pos)

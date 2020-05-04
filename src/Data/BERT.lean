@@ -165,7 +165,7 @@ def readNil : ByteParser Term := do Parser.tok 106; pure (Term.list [])
 def readList (readTerm : ByteParser Term) : ByteParser Term := do
   Parser.tok 108; N ← dword;
   elems ← Parser.count readTerm N.toNat;
-  optional readNil;
+  _ ← optional readNil;
   pure (Term.list elems.toList)
 
 def readBinary : ByteParser Term := do

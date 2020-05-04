@@ -49,7 +49,7 @@ def Put.run : Put → Sum String ByteArray
 def Put.fail : String → PutM Put.Result := pure ∘ Put.Result.error
 def Put.nope : PutM Put.Result := pure Put.Result.ok
 
-instance : HasAndthen (PutM Put.Result) := ⟨λ x y => do x; y⟩
+instance : HasAndthen (PutM Put.Result) := ⟨λ x y => do x >>= λ _ => y⟩
 instance : Inhabited Put := ⟨Put.fail "unreacheable code was reached"⟩
 
 def Put.uchr (ch : Char) : Put :=
