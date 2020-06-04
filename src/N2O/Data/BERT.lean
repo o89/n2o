@@ -16,17 +16,17 @@ def mapM {m : Type → Type} [Monad m] {α β : Type} (f : α → m β) : List �
 abbrev Dict (α β : Type) := List (α × β)
 
 inductive Term
-| byte : UInt8 → Term
+| byte   : UInt8 → Term
 -- there is now no Int32 in Lean
-| int : UInt32 → Term
--- | float : Float → Term
-| atom : String → Term
-| tuple : List Term → Term
+| int    : UInt32 → Term
+--| float  : Float → Term
+| atom   : String → Term
+| tuple  : List Term → Term
 | string : String → Term
-| list : List Term → Term
+| list   : List Term → Term
 | binary : ByteArray → Term
 | bigint : Int → Term
-| dict : List (Term × Term) → Term
+| dict   : List (Term × Term) → Term
 
 partial def Term.toString : Term → String
 | Term.byte x => toString x
@@ -47,8 +47,8 @@ partial def Term.toString : Term → String
 instance : HasToString Term := ⟨Term.toString⟩
 
 class BERT (α : Type) :=
-(toTerm {} : α → Term)
-(fromTerm {} : Term → Sum String α)
+(toTerm   : α → Term)
+(fromTerm : Term → Sum String α)
 
 instance Term.BERT : BERT Term :=
 { toTerm := id, fromTerm := Sum.inr }
@@ -75,15 +75,15 @@ instance String.BERT : BERT String :=
 instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
 { toTerm := λ xs => Term.list (BERT.toTerm <$> xs),
   fromTerm := λ t => match t with
-    | Term.list xs => mapM (BERT.fromTerm α) xs
+    | Term.list xs => mapM BERT.fromTerm xs
     | _ => Sum.inl "invalid list type" }
 
 instance Dict.BERT {α β : Type} [BERT α] [BERT β] : BERT (Dict α β) :=
 { toTerm := λ xs => Term.dict (Prod.map BERT.toTerm BERT.toTerm <$> xs),
   fromTerm :=
     let termFromPair (pair : Term × Term) : Sum String (α × β) :=
-    (do fst ← BERT.fromTerm α pair.1;
-        snd ← BERT.fromTerm β pair.2;
+    (do fst ← BERT.fromTerm pair.1;
+        snd ← BERT.fromTerm pair.2;
         pure (fst, snd));
     λ t => match t with
     | Term.dict xs => mapM termFromPair xs
@@ -93,8 +93,8 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
 { toTerm := λ x => Term.tuple [ BERT.toTerm x.1, BERT.toTerm x.2 ],
   fromTerm := λ t => match t with
     | Term.tuple [a, b] => do
-      x ← BERT.fromTerm α a;
-      y ← BERT.fromTerm β b;
+      x ← BERT.fromTerm a;
+      y ← BERT.fromTerm b;
       pure (x, y)
     | _ => Sum.inl "invalid tuple type" }
 
