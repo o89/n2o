@@ -1,6 +1,6 @@
-#include "runtime/object.h"
-#include "runtime/io.h"
-#include "runtime/apply.h"
+#include "lean/object.h"
+#include "lean/io.h"
+#include "lean/apply.h"
 #include <libwebsockets.h>
 #include <iostream>
 #include <queue>

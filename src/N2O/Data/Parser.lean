@@ -28,39 +28,39 @@ def ByteParser.ch : ByteParser Char :=
   if pos < input.size then
     let ch := UInt32.ofNat (input.get! pos).toNat;
     if h : isValidChar ch then ParseResult.done (pos + 1) (Char.mk ch h)
-    else ParseResult.fail _ pos [ "<valid char>" ]
-  else ParseResult.fail _ pos [ "<char>" ]
+    else ParseResult.fail pos [ "<valid char>" ]
+  else ParseResult.fail pos [ "<char>" ]
 
 namespace Parser
 variables {Γ π : Type} [BuiltFrom Γ π] {α β : Type}
 
 protected def bind (p : Parser Γ π α) (f : α → Parser Γ π β) : Parser Γ π β :=
 λ input pos => match p input pos with
-| ParseResult.done pos a => f a input pos
-| ParseResult.fail _ pos msg => ParseResult.fail β pos msg
+| ParseResult.done pos a   => f a input pos
+| ParseResult.fail pos msg => ParseResult.fail pos msg
 
 protected def pure (a : α) : Parser Γ π α :=
 λ input pos => ParseResult.done pos a
 
 protected def fail (msg : String) : Parser Γ π α :=
-λ _ pos => ParseResult.fail α pos [ msg ]
+λ _ pos => ParseResult.fail pos [ msg ]
 
 instance : Monad (Parser Γ π) :=
 { pure := @Parser.pure Γ π _,
   bind := @Parser.bind Γ π _ }
 
 protected def failure : Parser Γ π α :=
-λ _ pos => ParseResult.fail α pos []
+λ _ pos => ParseResult.fail pos []
 
 protected def orelse (p q : Parser Γ π α) : Parser Γ π α :=
 λ input pos => match p input pos with
-| ParseResult.fail _ pos₁ msg₁ =>
-  if pos₁ ≠ pos then ParseResult.fail _ pos₁ msg₁
+| ParseResult.fail pos₁ msg₁ =>
+  if pos₁ ≠ pos then ParseResult.fail pos₁ msg₁
   else match q input pos with
-  | ParseResult.fail _ pos₂ msg₂ =>
-    if pos₁ < pos₂ then ParseResult.fail _ pos₁ msg₁
-    else if pos₂ < pos₁ then ParseResult.fail _ pos₂ msg₂
-    else ParseResult.fail _ pos₁ (msg₁ ++ msg₂)
+  | ParseResult.fail pos₂ msg₂ =>
+    if pos₁ < pos₂ then ParseResult.fail pos₁ msg₁
+    else if pos₂ < pos₁ then ParseResult.fail pos₂ msg₂
+    else ParseResult.fail pos₁ (msg₁ ++ msg₂)
   | ok => ok
 | ok => ok
 
@@ -72,7 +72,7 @@ instance : Inhabited (Parser Γ π α) := ⟨failure⟩
 
 def decorateErrors (msgs : List String) (p : Parser Γ π α) : Parser Γ π α :=
 λ input pos => match p input pos with
-| ParseResult.fail _ _ _ => ParseResult.fail _ pos msgs
+| ParseResult.fail _ _ => ParseResult.fail pos msgs
 | ok => ok
 
 def decorateError (msg : String) : Parser Γ π α → Parser Γ π α :=
@@ -104,10 +104,10 @@ def fix (F : Parser Γ π α → Parser Γ π α) : Parser Γ π α :=
 def sat (p : π → Bool) : Parser Γ π π :=
 λ input pos =>
   if pos < BuiltFrom.size π input then
-    let c : π := BuiltFrom.get input pos;
+    let c : π := BuiltFrom.get π input pos;
     if p c then ParseResult.done (pos + 1) c
-    else ParseResult.fail _ pos []
-  else ParseResult.fail _ pos []
+    else ParseResult.fail pos []
+  else ParseResult.fail pos []
 
 def byte : Parser Γ π π := sat (λ _ => true)
 
@@ -133,7 +133,7 @@ do rem ← remaining; guard (rem = 0)
 def run (p : Parser Γ π α) (input : Γ) : Sum String α :=
 match (p <* eof) input 0 with
 | ParseResult.done pos res => Sum.inr res
-| ParseResult.fail _ pos msg =>
+| ParseResult.fail pos msg =>
   Sum.inl ("expected: " ++ String.intercalate "or " msg)
 
 end Parser

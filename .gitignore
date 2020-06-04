@@ -2,5 +2,5 @@
 *.o
 *.a
 *.cpp
-!src/Network/Web/Callback.cpp
-!src/Network/Web/Server.cpp
+!src/N2O/Network/Web/Callback.cpp
+!src/N2O/Network/Web/Server.cpp

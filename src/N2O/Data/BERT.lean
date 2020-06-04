@@ -75,14 +75,16 @@ instance String.BERT : BERT String :=
 instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
 { toTerm := λ xs => Term.list (BERT.toTerm <$> xs),
   fromTerm := λ t => match t with
-    | Term.list xs => mapM BERT.fromTerm xs
+    | Term.list xs => mapM (BERT.fromTerm α) xs
     | _ => Sum.inl "invalid list type" }
 
 instance Dict.BERT {α β : Type} [BERT α] [BERT β] : BERT (Dict α β) :=
 { toTerm := λ xs => Term.dict (Prod.map BERT.toTerm BERT.toTerm <$> xs),
   fromTerm :=
     let termFromPair (pair : Term × Term) : Sum String (α × β) :=
-    (do fst ← BERT.fromTerm pair.1; snd ← BERT.fromTerm pair.2; pure (fst, snd));
+    (do fst ← BERT.fromTerm α pair.1;
+        snd ← BERT.fromTerm β pair.2;
+        pure (fst, snd));
     λ t => match t with
     | Term.dict xs => mapM termFromPair xs
     | _ => Sum.inl "invalid dict type" }
@@ -91,8 +93,8 @@ instance Tuple.BERT {α β : Type} [BERT α] [BERT β] : BERT (α × β) :=
 { toTerm := λ x => Term.tuple [ BERT.toTerm x.1, BERT.toTerm x.2 ],
   fromTerm := λ t => match t with
     | Term.tuple [a, b] => do
-      x ← BERT.fromTerm a;
-      y ← BERT.fromTerm b;
+      x ← BERT.fromTerm α a;
+      y ← BERT.fromTerm β b;
       pure (x, y)
     | _ => Sum.inl "invalid tuple type" }
 
