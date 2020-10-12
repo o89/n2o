@@ -13,39 +13,32 @@ constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (arbitrary _)
 @[extern c inline "#1 >> #2"]
 constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (arbitrary _)
 
-def UInt8.toUInt32 (x : UInt8) : UInt32 := UInt32.ofNat x.toNat
-def UInt16.crop (x : UInt16) : UInt8 := UInt8.ofNat x.toNat
-def UInt32.crop (x : UInt32) : UInt8 := UInt8.ofNat x.toNat
+@[extern c inline "((uint16_t) #1)"]
+def UInt8.toUInt16 (x : UInt8) : UInt16 := x.toNat.toUInt16
+@[extern c inline "((uint8_t) #1)"]
+def UInt16.toUInt8 (x : UInt16) : UInt8 := x.toNat.toUInt8
 
 def UInt16.nthByte (x : UInt16) (n : Nat) : UInt8 :=
-(UInt16.land (UInt16.shiftr x $ 8 * UInt16.ofNat n) 255).crop
+(UInt16.land (UInt16.shiftr x $ 8 * UInt16.ofNat n) 255).toUInt8
 
 def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
-(UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).crop
+(UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toUInt8
 
 def List.iotaZero : Nat → List Nat
 | 0     => [ 0 ]
 | n + 1 => (n + 1) :: List.iotaZero n
 
 def UInt16.toBytes (x : UInt16) : ByteArray :=
-List.toByteArray $ UInt16.nthByte x <$> List.iotaZero 1
+List.toByteArray (List.map (UInt16.nthByte x) $ List.iotaZero 1)
 
 def UInt32.toBytes (x : UInt32) : ByteArray :=
-List.toByteArray $ UInt32.nthByte x <$> List.iotaZero 3
+List.toByteArray (List.map (UInt32.nthByte x) $ List.iotaZero 3)
 
 def UInt8.shiftl16 (x : UInt8) (y : UInt16) : UInt16 :=
-UInt16.shiftl (UInt16.ofNat x.toNat) y
+UInt16.shiftl x.toUInt16 y
 
 def UInt8.shiftl32 (x : UInt8) (y : UInt32) : UInt32 :=
-UInt32.shiftl (UInt32.ofNat x.toNat) y
-
-partial def ByteArray.appendAux : Nat → ByteArray → ByteArray → ByteArray
-| i, dest, res =>
-  if i < res.size then ByteArray.appendAux (i + 1) (dest.push $ res.get! i) res
-  else dest
-
-def ByteArray.append := ByteArray.appendAux 0
-instance : HasAppend ByteArray := ⟨ByteArray.append⟩
+UInt32.shiftl x.toUInt32 y
 
 def String.bytes (x : String) : ByteArray :=
-List.toByteArray $ (UInt8.ofNat ∘ Char.toNat) <$> x.toList
+List.toByteArray (List.map (UInt8.ofNat ∘ Char.toNat) x.toList)

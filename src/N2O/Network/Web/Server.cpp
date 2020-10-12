@@ -94,12 +94,12 @@ static struct lws_protocols protocols[] = {
 extern "C" obj* lean_set_handler(obj* f, obj* r) {
     n2o_handler = f;
     lean::mark_persistent(f);
-    return lean_mk_io_result(lean::box(0));
+    return lean_io_result_mk_ok(lean::box(0));
 }
 
 extern "C" obj* lean_stop_server(obj* r) {
     interrupted = 1;
-    return lean_mk_io_result(lean::box(0));
+    return lean_io_result_mk_ok(lean::box(0));
 }
 
 extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
@@ -115,10 +115,9 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
     info.vhost_name = host;
     info.mounts = &mounts;
     info.protocols = protocols;
-    info.ws_ping_pong_interval = 0;
 
     context = lws_create_context(&info);
-    if (!context) return lean::set_io_error("lws init failed");
+    if (!context) return lean_io_result_mk_error(lean_mk_string("lws init failed"));
 
     printf("Started server at %s:%d\n", host, port);
 
@@ -126,5 +125,5 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
 
     lws_context_destroy(context);
 
-    return lean_mk_io_result(lean::box(0));
+    return lean_io_result_mk_ok(lean::box(0));
 }

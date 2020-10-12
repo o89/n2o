@@ -54,19 +54,19 @@ instance : Inhabited Put := ⟨Put.fail "unreacheable code was reached"⟩
 
 def Put.uchr (ch : Char) : Put :=
 let x := UInt32.ofNat ch.val.toNat;
-if x < 0x80 then Put.raw x.crop
+if x < 0x80 then Put.raw x.toUInt8
 else if x < 0x800 then
-  Put.raw ((x.land 0b11111000000).shiftr 6 + 0b11000000).crop >>
-  Put.raw (x.land 0b111111 + 0b10000000).crop
+  Put.raw ((x.land 0b11111000000).shiftr 6 + 0b11000000).toUInt8 >>
+  Put.raw (x.land 0b111111 + 0b10000000).toUInt8
 else if x < 0x10000 then
-  Put.raw ((x.land 0b1111000000000000).shiftr 12 + 0b11100000).crop >>
-  Put.raw ((x.land 0b111111000000).shiftr 6 + 0b10000000).crop >>
-  Put.raw (x.land 0b111111 + 0b10000000).crop
+  Put.raw ((x.land 0b1111000000000000).shiftr 12 + 0b11100000).toUInt8 >>
+  Put.raw ((x.land 0b111111000000).shiftr 6 + 0b10000000).toUInt8 >>
+  Put.raw (x.land 0b111111 + 0b10000000).toUInt8
 else if x < 0x110000 then
-  Put.raw ((x.land 0b111000000000000000000).shiftr 18 + 0b11110000).crop >>
-  Put.raw ((x.land 0b111111000000000000).shiftr 12 + 0b10000000).crop >>
-  Put.raw ((x.land 0b111111000000).shiftr 6 + 0b10000000).crop >>
-  Put.raw (x.land 0b111111 + 0b10000000).crop
+  Put.raw ((x.land 0b111000000000000000000).shiftr 18 + 0b11110000).toUInt8 >>
+  Put.raw ((x.land 0b111111000000000000).shiftr 12 + 0b10000000).toUInt8 >>
+  Put.raw ((x.land 0b111111000000).shiftr 6 + 0b10000000).toUInt8 >>
+  Put.raw (x.land 0b111111 + 0b10000000).toUInt8
 else Put.fail "character too big"
 
 def Put.unicode (s : String) : Put :=

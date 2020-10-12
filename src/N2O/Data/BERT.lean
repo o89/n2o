@@ -35,15 +35,15 @@ partial def Term.toString : Term → String
 | Term.atom s@(String.mk $ x :: xs) =>
   if x.isLower then s
   else "'" ++ s ++ "'"
-| Term.tuple ts => "{" ++ String.intercalate ", " (Term.toString <$> ts) ++ "}"
+| Term.tuple ts => "{" ++ String.intercalate ", " (List.map Term.toString ts) ++ "}"
 | Term.string s => "\"" ++ s ++ "\""
-| Term.list ts => "[" ++ String.intercalate ", " (Term.toString <$> ts) ++ "]"
-| Term.binary s => "<<" ++ String.intercalate ", " (toString <$> s.toList) ++ ">>"
+| Term.list ts => "[" ++ String.intercalate ", " (List.map Term.toString ts) ++ "]"
+| Term.binary s => "<<" ++ String.intercalate ", " (List.map toString s.toList) ++ ">>"
 | Term.bigint x => toString x
 | Term.dict x =>
   let printPair := λ (pair : Term × Term) =>
     "{" ++ Term.toString pair.1 ++ ", " ++ Term.toString pair.2 ++ "}";
-  "[" ++ String.intercalate ", " (printPair <$> x) ++ "]"
+  "[" ++ String.intercalate ", " (List.map printPair x) ++ "]"
 instance : HasToString Term := ⟨Term.toString⟩
 
 class BERT (α : Type) :=
@@ -73,13 +73,13 @@ instance String.BERT : BERT String :=
     | _ => Sum.inl "invalid string type" }
 
 instance List.BERT {α : Type} [BERT α] : BERT (List α) :=
-{ toTerm := λ xs => Term.list (BERT.toTerm <$> xs),
+{ toTerm := λ xs => Term.list (List.map BERT.toTerm xs),
   fromTerm := λ t => match t with
     | Term.list xs => mapM BERT.fromTerm xs
     | _ => Sum.inl "invalid list type" }
 
 instance Dict.BERT {α β : Type} [BERT α] [BERT β] : BERT (Dict α β) :=
-{ toTerm := λ xs => Term.dict (Prod.map BERT.toTerm BERT.toTerm <$> xs),
+{ toTerm := λ xs => Term.dict (List.map (Prod.map BERT.toTerm BERT.toTerm) xs),
   fromTerm :=
     let termFromPair (pair : Term × Term) : Sum String (α × β) :=
     (do fst ← BERT.fromTerm pair.1;
@@ -186,8 +186,9 @@ def readBignum' {α : Type}
   isMinus ← IsMinus; d ← Parser.count Parser.byte (toNat n);
   let x := Int.ofNat
     (List.foldl Nat.add 0 $
-      (λ (pair : Nat × UInt8) =>
-        pair.2.toNat * (256 ^ pair.1)) <$> d.toList.enum);
+      List.map (λ (pair : Nat × UInt8) =>
+                 pair.2.toNat * (256 ^ pair.1))
+               d.toList.enum);
   pure (Term.bigint $ if isMinus then -x else x)
 
 def readSmallBignum := readBignum' Parser.byte UInt8.toNat 110
