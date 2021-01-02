@@ -1,17 +1,17 @@
 @[extern c inline "#1 << #2"]
-constant UInt8.shiftl (a b : UInt8) : UInt8 := UInt8.ofNat (arbitrary _)
+constant UInt8.shiftl (a b : UInt8) : UInt8
 @[extern c inline "#1 >> #2"]
-constant UInt8.shiftr (a b : UInt8) : UInt8 := UInt8.ofNat (arbitrary _)
+constant UInt8.shiftr (a b : UInt8) : UInt8
 
 @[extern c inline "#1 << #2"]
-constant UInt16.shiftl (a b : UInt16) : UInt16 := UInt16.ofNat (arbitrary _)
+constant UInt16.shiftl (a b : UInt16) : UInt16
 @[extern c inline "#1 >> #2"]
-constant UInt16.shiftr (a b : UInt16) : UInt16 := UInt16.ofNat (arbitrary _)
+constant UInt16.shiftr (a b : UInt16) : UInt16
 
 @[extern c inline "#1 << #2"]
-constant UInt32.shiftl (a b : UInt32) : UInt32 := UInt32.ofNat (arbitrary _)
+constant UInt32.shiftl (a b : UInt32) : UInt32
 @[extern c inline "#1 >> #2"]
-constant UInt32.shiftr (a b : UInt32) : UInt32 := UInt32.ofNat (arbitrary _)
+constant UInt32.shiftr (a b : UInt32) : UInt32
 
 @[extern c inline "((uint16_t) #1)"]
 def UInt8.toUInt16 (x : UInt8) : UInt16 := x.toNat.toUInt16
@@ -24,15 +24,15 @@ def UInt16.nthByte (x : UInt16) (n : Nat) : UInt8 :=
 def UInt32.nthByte (x : UInt32) (n : Nat) : UInt8 :=
 (UInt32.land (UInt32.shiftr x $ 8 * UInt32.ofNat n) 255).toUInt8
 
-def List.iotaZero : Nat → List Nat
-| 0     => [ 0 ]
-| n + 1 => (n + 1) :: List.iotaZero n
+def iotaZero : Nat → List Nat
+|   0   => [0]
+| n + 1 => (n + 1) :: iotaZero n
 
 def UInt16.toBytes (x : UInt16) : ByteArray :=
-List.toByteArray (List.map (UInt16.nthByte x) $ List.iotaZero 1)
+List.toByteArray (List.map (UInt16.nthByte x) (iotaZero 1))
 
 def UInt32.toBytes (x : UInt32) : ByteArray :=
-List.toByteArray (List.map (UInt32.nthByte x) $ List.iotaZero 3)
+List.toByteArray (List.map (UInt32.nthByte x) (iotaZero 3))
 
 def UInt8.shiftl16 (x : UInt8) (y : UInt16) : UInt16 :=
 UInt16.shiftl x.toUInt16 y

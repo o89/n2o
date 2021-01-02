@@ -3,14 +3,14 @@ import Init.System.IO
 def String.init (s : String) := s.extract 0 (s.length - 1)
 
 def Header := String × String
-instance Header.HasToString : HasToString Header :=
+instance Header.ToString : ToString Header :=
 ⟨fun pair => pair.fst ++ ": " ++ pair.snd⟩
 
 inductive Msg
 | text : String → Msg
 | binary : ByteArray → Msg
 
-instance : HasToString Msg :=
+instance : ToString Msg :=
 ⟨λ m => match m with
   | Msg.text str => str
   | Msg.binary lst => toString lst⟩

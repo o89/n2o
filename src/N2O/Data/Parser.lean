@@ -3,22 +3,22 @@ import N2O.Data.Bytes
 import N2O.Data.Vector
 
 inductive ParseResult (α : Type)
-| done (pos : Nat) (result : α) : ParseResult
-| fail (pos : Nat) (msg : List String) : ParseResult
+| done (pos : Nat) (result : α) : ParseResult α
+| fail (pos : Nat) (msg : List String) : ParseResult α
 
 class BuiltFrom (Γ : Type) (π : Type) :=
-(size {} : Γ → Nat)
-(eq {} : π → π → Bool)
-(get {} : Γ → Nat → π)
+(size   {} : Γ → Nat)
+(eq     {} : π → π → Bool)
+(get    {} : Γ → Nat → π)
 (escape {} : π → String)
 
 def Parser (Γ π : Type) [BuiltFrom Γ π] (α : Type) :=
 ∀ (input : Γ) (start : Nat), ParseResult α
 
 instance : BuiltFrom ByteArray UInt8 :=
-{ size := ByteArray.size,
-  eq := HasBeq.beq,
-  get := ByteArray.get!,
+{ size   := ByteArray.size,
+  eq     := BEq.beq,
+  get    := ByteArray.get!,
   escape := toString }
 
 abbrev ByteParser := Parser ByteArray UInt8
@@ -52,7 +52,7 @@ instance : Monad (Parser Γ π) :=
 protected def failure : Parser Γ π α :=
 λ _ pos => ParseResult.fail pos []
 
-protected def orelse (p q : Parser Γ π α) : Parser Γ π α :=
+protected def orElse (p q : Parser Γ π α) : Parser Γ π α :=
 λ input pos => match p input pos with
 | ParseResult.fail pos₁ msg₁ =>
   if pos₁ ≠ pos then ParseResult.fail pos₁ msg₁
@@ -66,7 +66,7 @@ protected def orelse (p q : Parser Γ π α) : Parser Γ π α :=
 
 instance : Alternative (Parser Γ π) :=
 { failure := @Parser.failure Γ π _,
-  orelse := @Parser.orelse Γ π _ }
+  orElse := @Parser.orElse Γ π _ }
 
 instance : Inhabited (Parser Γ π α) := ⟨failure⟩
 
@@ -80,8 +80,7 @@ decorateErrors [ msg ]
 
 def foldrCore (f : α → β → β) (p : Parser Γ π α) (b : β) : Nat → Parser Γ π β
 | 0 => failure
-| reps + 1 =>
-  (do x ← p; xs ← foldrCore reps; pure (f x xs)) <|> pure b
+| reps + 1 => (do let x ← p; let xs ← foldrCore f p b reps; pure (f x xs)) <|> pure b
 
 def foldr (f : α → β → β) (p : Parser Γ π α) (b : β) : Parser Γ π β :=
 λ input pos => foldrCore f p b (BuiltFrom.size π input - pos + 1) input pos
@@ -96,7 +95,7 @@ List.cons <$> p <*> many p
 
 def fixCore (F : Parser Γ π α → Parser Γ π α) : Nat → Parser Γ π α
 | 0 => failure
-| maxDepth + 1 => F (fixCore maxDepth)
+| maxDepth + 1 => F (fixCore F maxDepth)
 
 def fix (F : Parser Γ π α → Parser Γ π α) : Parser Γ π α :=
 λ input pos => fixCore F (BuiltFrom.size π input - pos + 1) input pos
@@ -113,11 +112,11 @@ def byte : Parser Γ π π := sat (λ _ => true)
 
 def count (p : Parser Γ π α) : ∀ n, Parser Γ π (Vector α n)
 | 0 => pure Vector.nil
-| n + 1 => Vector.cons <$> p <*> count n
+| n + 1 => Vector.cons <$> p <*> count p n
 
 partial def countLength (p : Parser Γ π (α × Nat)) : Nat → Parser Γ π (List α)
 | 0 => pure []
-| m => do (x, n) ← p; xs ← countLength (m - n); pure (x :: xs)
+| m => do let (x, n) ← p; let xs ← countLength p (m - n); pure (x :: xs)
 
 def tok (b : π) : Parser Γ π Unit :=
 decorateError (BuiltFrom.escape Γ b) $
@@ -128,7 +127,7 @@ def remaining : Parser Γ π Nat :=
 
 def eof : Parser Γ π Unit :=
 decorateError "<end-of-file>" $
-do rem ← remaining; guard (rem = 0)
+do let rem ← remaining; guard (rem = 0)
 
 def run (p : Parser Γ π α) (input : Γ) : Sum String α :=
 match (p <* eof) input 0 with
@@ -153,17 +152,17 @@ namespace ByteParser.utf8
     else Parser.fail "invalid character"
 
   def readFirst : ByteParser (Char × Nat) := Parser.decorateError "<1>" $ do
-    a ← Parser.byte; guard (isFirst a); Prod.rev 1 <$> parseValidChar a.toUInt32
+    let a ← Parser.byte; guard (isFirst a); Prod.rev 1 <$> parseValidChar a.toUInt32
 
   def readSecond : ByteParser (Char × Nat) := Parser.decorateError "<2>" $ do
-    a ← Parser.byte; b ← Parser.byte;
+    let a ← Parser.byte; let b ← Parser.byte;
     guard (isSecond a); guard (isHelpful b);
     Prod.rev 2 <$> (parseValidChar $
       (a.toUInt32.land 0b00011111).shiftl 6 +
        b.toUInt32.land 0b00111111)
 
   def readThird : ByteParser (Char × Nat) := Parser.decorateError "<3>" $ do
-    a ← Parser.byte; b ← Parser.byte; c ← Parser.byte;
+    let a ← Parser.byte; let b ← Parser.byte; let c ← Parser.byte;
     guard (isThird a); guard (isHelpful b); guard (isHelpful c);
     Prod.rev 3 <$> (parseValidChar $
       (a.toUInt32.land 0b00001111).shiftl 12 +
@@ -171,7 +170,7 @@ namespace ByteParser.utf8
        c.toUInt32.land 0b00111111 )
 
   def readFourth : ByteParser (Char × Nat) := Parser.decorateError "<4>" $ do
-    a ← Parser.byte; b ← Parser.byte; c ← Parser.byte; d ← Parser.byte;
+    let a ← Parser.byte; let b ← Parser.byte; let c ← Parser.byte; let d ← Parser.byte;
     guard (isFourth a); guard (isHelpful b);
     guard (isHelpful c); guard (isHelpful d);
     Prod.rev 4 <$> (parseValidChar $
@@ -184,4 +183,3 @@ namespace ByteParser.utf8
   def stringWithLength (s : Nat) : ByteParser String :=
   String.mk <$> Parser.countLength uchr s
 end ByteParser.utf8
-

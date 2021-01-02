@@ -12,7 +12,7 @@ namespace Sum
   | _, Sum.inl er => Sum.inl er
 
   instance {α : Type} : Applicative (Sum α) :=
-  { pure := λ _ x => Sum.inr x,
+  { pure := λ x => Sum.inr x,
     seq := @HasSeq α }
 
   def HasBind {α β γ : Type} : Sum α β → (β → Sum α γ) → Sum α γ
@@ -20,7 +20,7 @@ namespace Sum
   | Sum.inl er,  _ => Sum.inl er
 
   instance {α : Type} : Monad (Sum α) :=
-  { pure := λ _ x => Sum.inr x,
+  { pure := λ x => Sum.inr x,
     bind := @HasBind α }
 
   @[matchPattern] abbrev fail {α β : Type} : α → Sum α β := Sum.inl
