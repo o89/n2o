@@ -7,7 +7,7 @@ instance Header.ToString : ToString Header :=
 ⟨fun pair => pair.fst ++ ": " ++ pair.snd⟩
 
 inductive Msg
-| text : String → Msg
+| text   : String → Msg
 | binary : ByteArray → Msg
 
 instance : ToString Msg :=
@@ -16,25 +16,25 @@ instance : ToString Msg :=
   | Msg.binary lst => toString lst⟩
 
 structure Req :=
-(path : String)
-(method : String)
+(path    : String)
+(method  : String)
 (version : String)
 (headers : List Header)
 
 inductive Result
-| error {} : String → Result
+| error {}   : String → Result
 | warning {} : String → Result
-| reply {} : Msg → Result
-| ok {} : Result
+| reply {}   : Msg → Result
+| ok {}      : Result
 
 def Handler := Req → Msg → Result
 
 structure Proto :=
-(prot : Type) -- Input type for protocol handler
-(ev : Type) -- Output type for protocol handler and input type for event handler
+(prot    : Type) -- Input type for protocol handler
+(ev      : Type) -- Output type for protocol handler and input type for event handler
 (res req : Type)
 (nothing : res)
-(proto : prot → ev)
+(proto   : prot → ev)
 
 structure Cx (m : Proto) :=
 (req : m.req) (module : m.ev → m.res)
@@ -51,7 +51,7 @@ def mkHandler (m : Proto) (handlers : List (Cx m → Cx m)) : m.req → m.prot �
 
 structure WS :=
 (question : Msg)
-(headers : Array (String × String))
+(headers  : Array (String × String))
 
 def Header.dropBack : Header → Option Header
 | (name, value) =>
