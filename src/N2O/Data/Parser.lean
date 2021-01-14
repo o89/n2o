@@ -140,12 +140,12 @@ end Parser
 def Prod.rev {α β : Type} (y : β) (x : α) : α × β := (x, y)
 
 namespace ByteParser.utf8
-  def isHelpful (x : UInt8) : Bool := x.shiftr 6 = 0b10
+  def isHelpful (x : UInt8) : Bool := x.shiftRight 6 = 0b10
 
-  def isFirst (x : UInt8) : Bool := x.shiftr 7 = 0
-  def isSecond (x : UInt8) : Bool := x.shiftr 5 = 0b110
-  def isThird (x : UInt8) : Bool := x.shiftr 4 = 0b1110
-  def isFourth (x : UInt8) : Bool := x.shiftr 3 = 0b11110
+  def isFirst  (x : UInt8) : Bool := x.shiftRight 7 = 0
+  def isSecond (x : UInt8) : Bool := x.shiftRight 5 = 0b110
+  def isThird  (x : UInt8) : Bool := x.shiftRight 4 = 0b1110
+  def isFourth (x : UInt8) : Bool := x.shiftRight 3 = 0b11110
 
   def parseValidChar (x : UInt32) : ByteParser Char :=
     if h : isValidChar x then pure (Char.mk x h)
@@ -158,15 +158,15 @@ namespace ByteParser.utf8
     let a ← Parser.byte; let b ← Parser.byte;
     guard (isSecond a); guard (isHelpful b);
     Prod.rev 2 <$> (parseValidChar $
-      (a.toUInt32.land 0b00011111).shiftl 6 +
+      (a.toUInt32.land 0b00011111).shiftLeft 6 +
        b.toUInt32.land 0b00111111)
 
   def readThird : ByteParser (Char × Nat) := Parser.decorateError "<3>" $ do
     let a ← Parser.byte; let b ← Parser.byte; let c ← Parser.byte;
     guard (isThird a); guard (isHelpful b); guard (isHelpful c);
     Prod.rev 3 <$> (parseValidChar $
-      (a.toUInt32.land 0b00001111).shiftl 12 +
-      (b.toUInt32.land 0b00111111).shiftl 6 +
+      (a.toUInt32.land 0b00001111).shiftLeft 12 +
+      (b.toUInt32.land 0b00111111).shiftLeft 6 +
        c.toUInt32.land 0b00111111 )
 
   def readFourth : ByteParser (Char × Nat) := Parser.decorateError "<4>" $ do
@@ -174,9 +174,9 @@ namespace ByteParser.utf8
     guard (isFourth a); guard (isHelpful b);
     guard (isHelpful c); guard (isHelpful d);
     Prod.rev 4 <$> (parseValidChar $
-      (a.toUInt32.land 0b00000111).shiftl 18 +
-      (b.toUInt32.land 0b00111111).shiftl 12 +
-      (c.toUInt32.land 0b00111111).shiftl 6 +
+      (a.toUInt32.land 0b00000111).shiftLeft 18 +
+      (b.toUInt32.land 0b00111111).shiftLeft 12 +
+      (c.toUInt32.land 0b00111111).shiftLeft 6 +
        d.toUInt32.land 0b00111111)
 
   def uchr := readFirst <|> readSecond <|> readThird <|> readFourth

@@ -54,17 +54,17 @@ let x := UInt32.ofNat ch.val.toNat;
 let out := Put.raw ∘ UInt32.toUInt8;
 if x < 0x80 then Put.raw x.toUInt8
 else if x < 0x800 then
-  out (UInt32.shiftr (UInt32.land x 0b11111000000) 6 + 0b11000000) >>
-  out (UInt32.land x 0b111111 + 0b10000000)
+  out ((x.land 0b11111000000).shiftRight 6 + 0b11000000) >>
+  out (x.land 0b111111 + 0b10000000)
 else if x < 0x10000 then
-  out (UInt32.shiftr (UInt32.land x 0b1111000000000000) 12 + 0b11100000) >>
-  out (UInt32.shiftr (UInt32.land x 0b111111000000) 6 + 0b10000000) >>
-  out (UInt32.land x 0b111111 + 0b10000000)
+  out ((x.land 0b1111000000000000).shiftRight 12 + 0b11100000) >>
+  out ((x.land 0b111111000000).shiftRight 6 + 0b10000000) >>
+  out (x.land 0b111111 + 0b10000000)
 else if x < 0x110000 then
-  out (UInt32.shiftr (UInt32.land x 0b111000000000000000000) 18 + 0b11110000) >>
-  out (UInt32.shiftr (UInt32.land x 0b111111000000000000) 12 + 0b10000000) >>
-  out (UInt32.shiftr (UInt32.land x 0b111111000000) 6 + 0b10000000) >>
-  out (UInt32.land x 0b111111 + 0b10000000)
+  out ((x.land 0b111000000000000000000).shiftRight 18 + 0b11110000) >>
+  out ((x.land 0b111111000000000000).shiftRight 12 + 0b10000000) >>
+  out ((x.land 0b111111000000).shiftRight 6 + 0b10000000) >>
+  out (x.land 0b111111 + 0b10000000)
 else Put.fail "character too big"
 
 def Put.unicode (s : String) : Put :=
