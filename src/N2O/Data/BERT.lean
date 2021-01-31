@@ -73,7 +73,7 @@ instance String.BERT : BERT String :=
     | _ => Sum.inl "invalid string type" }
 
 section
-  variables {α : Type} [BERT α]
+  variable {α : Type} [BERT α]
 
   def listToTerm := Term.list ∘ @List.map α Term BERT.toTerm
   def listFromTerm : Term → Sum String (List α)
@@ -84,7 +84,7 @@ section
 end
 
 section
-  variables {α β : Type} [BERT α] [BERT β]
+  variable {α β : Type} [BERT α] [BERT β]
 
   def dictToTerm :=
   Term.dict ∘ @List.map (α × β) (Term × Term) (Prod.map BERT.toTerm BERT.toTerm)
@@ -102,7 +102,7 @@ section
 end
 
 section
-  variables {α β : Type} [BERT α] [BERT β]
+  variable {α β : Type} [BERT α] [BERT β]
 
   def pairToTerm : α × β → Term :=
   λ (a, b) => Term.tuple [BERT.toTerm a, BERT.toTerm b]

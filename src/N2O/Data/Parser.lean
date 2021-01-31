@@ -32,7 +32,7 @@ def ByteParser.ch : ByteParser Char :=
   else ParseResult.fail pos [ "<char>" ]
 
 namespace Parser
-variables {Γ π : Type} [BuiltFrom Γ π] {α β : Type}
+variable {Γ : Type} {π : Type} [BuiltFrom Γ π] {α β : Type}
 
 protected def bind (p : Parser Γ π α) (f : α → Parser Γ π β) : Parser Γ π β :=
 λ input pos => match p input pos with

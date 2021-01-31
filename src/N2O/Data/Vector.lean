@@ -4,7 +4,7 @@ def Vector (α : Type) : Nat → Type
 
 namespace Vector
 
-variables {α : Type} {n : Nat}
+variable {α : Type} {n : Nat}
 
 def nil : Vector α 0 := Unit.unit
 def cons : α → Vector α n → Vector α (n + 1) :=
