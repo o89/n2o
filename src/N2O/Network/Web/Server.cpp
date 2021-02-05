@@ -94,12 +94,12 @@ static struct lws_protocols protocols[] = {
 extern "C" obj* lean_set_handler(obj* f, obj* r) {
     n2o_handler = f;
     lean::mark_persistent(f);
-    return lean_io_result_mk_ok(lean::box(0));
+    return lean_io_result_mk_ok(lean::box_uint32(0));
 }
 
 extern "C" obj* lean_stop_server(obj* r) {
     interrupted = 1;
-    return lean_io_result_mk_ok(lean::box(0));
+    return lean_io_result_mk_ok(lean::box_uint32(0));
 }
 
 extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
@@ -125,5 +125,5 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
 
     lws_context_destroy(context);
 
-    return lean_io_result_mk_ok(lean::box(0));
+    return lean_io_result_mk_ok(lean::box_uint32(0));
 }
