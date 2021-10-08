@@ -12,8 +12,8 @@ namespace PutM
 
   def pure {α : Type} (x : α) : PutM α := (x, ByteArray.empty)
 
-  def HasSeq {α β : Type} : PutM (α → β) → PutM α → PutM β
-  | (f, w), (x, w') => (f x, w ++ w')
+  def HasSeq {α β : Type} (a : PutM (α → β)) (b : Unit → PutM α) : PutM β :=
+  match a, b () with | (f, w), (x, w') => (f x, w ++ w')
 
   instance : Applicative PutM :=
   { pure := pure, seq := HasSeq }
@@ -46,7 +46,7 @@ def Put.run : Put → Sum String ByteArray
 def Put.fail : String → PutM Report := pure ∘ Report.error
 def Put.nope : PutM Report := pure Report.ok
 
-instance : HAndThen Put Put Put := ⟨λ x y => do x >>= λ _ => y⟩
+instance : HAndThen Put Put Put := ⟨λ x y => do x >>= λ _ => y ()⟩
 instance : Inhabited Put        := ⟨Put.fail "unreacheable code was reached"⟩
 
 def Put.uchr (ch : Char) : Put :=
@@ -68,4 +68,4 @@ else if x < 0x110000 then
 else Put.fail "character too big"
 
 def Put.unicode (s : String) : Put :=
-List.foldr (HAndThen.hAndThen ∘ Put.uchr) Put.nope s.toList
+List.foldr (λ ch fn => Put.uchr ch >> fn) Put.nope s.toList

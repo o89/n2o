@@ -1,8 +1,3 @@
-@[extern c inline "((uint16_t) #1)"]
-def UInt8.toUInt16 (x : UInt8) : UInt16 := x.toNat.toUInt16
-@[extern c inline "((uint8_t) #1)"]
-def UInt16.toUInt8 (x : UInt16) : UInt8 := x.toNat.toUInt8
-
 def UInt16.nthByte (x : UInt16) (n : Nat) : UInt8 :=
 (UInt16.land (x.shiftRight $ 8 * UInt16.ofNat n) 255).toUInt8
 

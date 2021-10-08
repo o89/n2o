@@ -1,11 +1,9 @@
-#include "lean/object.h"
-#include "lean/io.h"
-#include "lean/apply.h"
+#include <lean/lean.h>
 #include <libwebsockets.h>
 #include <iostream>
 #include <queue>
 
-typedef lean::object obj;
+typedef lean_object obj;
 
 enum MsgKind { Text, Binary };
 struct Msg {

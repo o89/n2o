@@ -6,7 +6,8 @@ namespace Sum
   instance {α : Type} : Functor (Sum α) :=
   { map := @HasMap α }
 
-  def HasSeq {γ α β : Type} : Sum γ (α → β) → Sum γ α → Sum γ β
+  def HasSeq {γ α β : Type} (a : Sum γ (α → β)) (b : Unit → Sum γ α) : Sum γ β :=
+  match a, b () with
   | Sum.inr f, Sum.inr x => Sum.inr (f x)
   | Sum.inl er, _ => Sum.inl er
   | _, Sum.inl er => Sum.inl er

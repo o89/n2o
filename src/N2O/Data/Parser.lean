@@ -52,11 +52,11 @@ instance : Monad (Parser Γ π) :=
 protected def failure : Parser Γ π α :=
 λ _ pos => ParseResult.fail pos []
 
-protected def orElse (p q : Parser Γ π α) : Parser Γ π α :=
+protected def orElse (p : Parser Γ π α) (q : Unit → Parser Γ π α) : Parser Γ π α :=
 λ input pos => match p input pos with
 | ParseResult.fail pos₁ msg₁ =>
   if pos₁ ≠ pos then ParseResult.fail pos₁ msg₁
-  else match q input pos with
+  else match q () input pos with
   | ParseResult.fail pos₂ msg₂ =>
     if pos₁ < pos₂ then ParseResult.fail pos₁ msg₁
     else if pos₂ < pos₁ then ParseResult.fail pos₂ msg₂

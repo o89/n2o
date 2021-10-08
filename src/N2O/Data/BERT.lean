@@ -266,7 +266,7 @@ partial def writeTerm' : Term → Put
 | Term.int x => Put.byte 98 >> Put.tell x.toBytes
 | Term.atom s => writeAtom s
 | Term.tuple x =>
-  let tuple := List.foldr (HAndThen.hAndThen ∘ writeTerm') Put.nope;
+  let tuple := List.foldr (λ τ fn => writeTerm' τ >> fn) Put.nope;
   if x.length < UInt8.size then
     Put.byte 104 >> Put.byte x.length >> tuple x
   else if x.length < UInt32.size then
@@ -275,7 +275,7 @@ partial def writeTerm' : Term → Put
 | Term.list x =>
   if x.length < UInt32.size then
     Put.byte 108 >> Put.dword x.length >>
-    List.foldr (HAndThen.hAndThen ∘ writeTerm') (Put.byte 106) x
+    List.foldr (λ τ fn => writeTerm' τ >> fn) (Put.byte 106) x
   else Put.fail "BERT list too long (≥ 4294967296)"
 | Term.binary x =>
   if x.size < UInt32.size then
@@ -288,7 +288,7 @@ partial def writeTerm' : Term → Put
   λ (x : Term × Term) => writeTerm' x.1 >> writeTerm' x.2;
   if x.length < UInt32.size then
     Put.byte 116 >> Put.dword x.length >>
-    List.foldr (HAndThen.hAndThen ∘ writePair) Put.nope x
+    List.foldr (λ π fn => writePair π >> fn) Put.nope x
   else Put.fail "BERT dictionary too long (≥ 4294967296)"
 
 def writeTerm (x : Term) : Sum String ByteArray :=

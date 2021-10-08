@@ -4,22 +4,22 @@ obj* n2o_handler;
 int interrupted;
 
 obj* prod(obj* fst, obj* snd) {
-    obj* tuple = lean::alloc_cnstr(0, 2, 0);
-    lean::cnstr_set(tuple, 0, fst);
-    lean::cnstr_set(tuple, 1, snd);
+    obj* tuple = lean_alloc_ctor(0, 2, 0);
+    lean_ctor_set(tuple, 0, fst);
+    lean_ctor_set(tuple, 1, snd);
 
     return tuple;
 }
 
 void read_headers(struct lws* wsi, n2o_userdata* user) {
-    int count = 0;
+    uint64_t count = 0;
     for (int i = 0; i < WSI_TOKEN_COUNT; i++) {
         auto token = (enum lws_token_indexes) i;
         if (lws_hdr_total_length(wsi, token) > 0) count++;
     }
 
-    auto zero = prod(lean::mk_string(""), lean::mk_string(""));
-    user->headers = lean::mk_array(lean::mk_nat_obj(count), zero);
+    auto zero = prod(lean_mk_string(""), lean_mk_string(""));
+    user->headers = lean_mk_array(lean_uint64_to_nat(count), zero);
     count = 0;
 
     for (int i = 0; i < WSI_TOKEN_COUNT; i++) {
@@ -33,13 +33,13 @@ void read_headers(struct lws* wsi, n2o_userdata* user) {
             lws_hdr_copy(wsi, value, len + 1, token);
             value[len] = '\0';
 
-            lean::array_cptr(user->headers)[count] =
-                prod(lean::mk_string(name), lean::mk_string(value));
+            lean_array_cptr(user->headers)[count] =
+                prod(lean_mk_string(name), lean_mk_string(value));
             free(value);
             count++;
         }
     }
-    lean::mark_persistent(user->headers);
+    lean_mark_persistent(user->headers);
 }
 
 void send_msg(struct lws* wsi, n2o_userdata* user) {
@@ -59,50 +59,58 @@ void send_msg(struct lws* wsi, n2o_userdata* user) {
 obj* read_msg(struct lws* wsi, n2o_userdata* user, char* in, size_t len) {
     obj* msg;
     if (lws_frame_is_binary(wsi)) {
-        msg = lean::alloc_cnstr(1, 1, 0);
+        msg = lean_alloc_ctor(1, 1, 0);
 
-        auto buff = lean::alloc_sarray(sizeof(char), len, len);
+        auto buff = lean_alloc_sarray(sizeof(char), len, len);
         memcpy(lean_sarray_cptr(buff), in, len);
-        lean::cnstr_set(msg, 0, buff);
+        lean_ctor_set(msg, 0, buff);
     } else {
-        msg = lean::alloc_cnstr(0, 1, 0);
+        msg = lean_alloc_ctor(0, 1, 0);
         auto str = (char*) malloc(len + 1);
         memcpy(str, in, len); str[len] = '\0';
 
-        lean::cnstr_set(msg, 0, lean::mk_string(str)); free(str);
+        lean_ctor_set(msg, 0, lean_mk_string(str)); free(str);
     }
 
     return msg;
 }
 
 void push_msg(struct lws* wsi, n2o_userdata* user, obj* res) {
-    if (lean::obj_tag(res) == 0) { // error
-        printf("%s\n", lean::string_cstr(lean::cnstr_get(res, 0)));
-        interrupted = 1;
-    } else if (lean::obj_tag(res) == 1) { // warning
-        printf("%s\n", lean::string_cstr(lean::cnstr_get(res, 0)));
-    } else if (lean::obj_tag(res) == 2) { // reply
-        auto reply = lean::cnstr_get(res, 0);
+    auto tag = lean_obj_tag(res);
 
-        if (lean::obj_tag(reply) == 0) {
-            // free(msg); calls `send_msg` or callback on close
-            auto text = lean::cnstr_get(reply, 0);
-            auto length = lean::string_size(text);
-            auto msg = (char*) malloc(length);
-            strcpy(msg, lean::string_cstr(text));
+    switch (tag) {
+        case 0: { // error
+            printf("%s\n", lean_string_cstr(lean_ctor_get(res, 0)));
+            interrupted = 1;
+	    break;
+	}
+        case 1: { // warning
+            printf("%s\n", lean_string_cstr(lean_ctor_get(res, 0)));
+	    break;
+	}
+	case 2: { // reply
+            auto reply = lean_ctor_get(res, 0);
 
-            user->pool->push({ Text, length, msg });
-            lws_callback_on_writable(wsi);
-        } else {
-            auto arr = lean::cnstr_get(reply, 0);
-            auto size = lean::sarray_size(arr);
+            if (lean_obj_tag(reply) == 0) {
+                // free(msg); calls `send_msg` or callback on close
+                auto text = lean_ctor_get(reply, 0);
+		auto length = lean_string_size(text);
+                auto msg = (char*) malloc(length);
+                strcpy(msg, lean_string_cstr(text));
 
-            auto msg = (char*) malloc(size);
-            for (size_t i = 0; i < size; i++)
-              msg[i] = lean::byte_array_get(arr, lean::box(i));
+                user->pool->push({ Text, length, msg });
+                lws_callback_on_writable(wsi);
+            } else {
+                auto arr = lean_ctor_get(reply, 0);
+                auto size = lean_sarray_size(arr);
 
-            user->pool->push({ Binary, size, msg });
-            lws_callback_on_writable(wsi);
+                auto msg = (char*) malloc(size);
+                for (size_t i = 0; i < size; i++)
+                    msg[i] = lean_byte_array_get(arr, lean_box(i));
+
+                user->pool->push({ Binary, size, msg });
+                lws_callback_on_writable(wsi);
+            }
         }
     }
 }

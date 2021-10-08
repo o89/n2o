@@ -28,12 +28,12 @@ static int callback_n2o(struct lws *wsi,
 
     switch (reason) {
         case LWS_CALLBACK_RECEIVE: {
-            auto socket = lean::alloc_cnstr(0, 2, 0);
+            auto socket = lean_alloc_ctor(0, 2, 0);
             auto msg = read_msg(wsi, userdata, (char*) in, len);
-            lean::cnstr_set(socket, 0, msg);
-            lean::cnstr_set(socket, 1, userdata->headers);
+            lean_ctor_set(socket, 0, msg);
+            lean_ctor_set(socket, 1, userdata->headers);
 
-            auto res = lean::apply_1(n2o_handler, socket);
+            auto res = lean_apply_1(n2o_handler, socket);
             push_msg(wsi, userdata, res);
 
             break;
@@ -56,7 +56,7 @@ static int callback_n2o(struct lws *wsi,
                 userdata->pool->pop();
             }
             delete userdata->pool;
-            lean::free_heap_obj(userdata->headers);
+            lean_free_object(userdata->headers);
             break;
         }
 
@@ -93,20 +93,20 @@ static struct lws_protocols protocols[] = {
 
 extern "C" obj* lean_set_handler(obj* f, obj* r) {
     n2o_handler = f;
-    lean::mark_persistent(f);
-    return lean_io_result_mk_ok(lean::box_uint32(0));
+    lean_mark_persistent(f);
+    return lean_io_result_mk_ok(lean_box_uint32(0));
 }
 
 extern "C" obj* lean_stop_server(obj* r) {
     interrupted = 1;
-    return lean_io_result_mk_ok(lean::box_uint32(0));
+    return lean_io_result_mk_ok(lean_box_uint32(0));
 }
 
-extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
+extern "C" obj* lean_run_server(obj* addr, uint16_t port, obj* r) {
     interrupted = 0;
 
     struct lws_context *context;
-    const char *host = lean::string_cstr(addr);    
+    const char *host = lean_string_cstr(addr);
 
     struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
@@ -125,5 +125,5 @@ extern "C" obj* lean_run_server(obj* addr, lean::uint16 port, obj* r) {
 
     lws_context_destroy(context);
 
-    return lean_io_result_mk_ok(lean::box_uint32(0));
+    return lean_io_result_mk_ok(lean_box_uint32(0));
 }
